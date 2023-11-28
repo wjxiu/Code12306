@@ -1,11 +1,8 @@
-package org.wjx.service.impl;
+package org.wjx.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
-import org.redisson.RedissonBloomFilter;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -25,8 +22,6 @@ import org.wjx.dto.req.UserRegisterReqDTO;
 import org.wjx.dto.resp.PassengerRespDTO;
 import org.wjx.dto.resp.UserLoginRespDTO;
 import org.wjx.dto.resp.UserRegisterRespDTO;
-import org.wjx.enums.UserChainMarkEnum;
-import org.wjx.filter.AbstractFilter;
 import org.wjx.filter.AbstractFilterChainsContext;
 import org.wjx.service.PassengerService;
 import org.wjx.service.UserLoginService;
@@ -37,7 +32,6 @@ import org.wjx.user.core.UserInfoDTO;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * @author xiu

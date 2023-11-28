@@ -1,4 +1,4 @@
-package org.wjx.service.impl;
+package org.wjx.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -11,7 +11,6 @@ import org.wjx.dao.mapper.UserMapper;
 import org.wjx.dto.req.UserQueryActualRespDTO;
 import org.wjx.dto.req.UserUpdateReqDTO;
 import org.wjx.dto.resp.UserQueryRespDTO;
-import org.wjx.service.UserLoginService;
 import org.wjx.service.UserService;
 import org.wjx.toolkit.BeanUtil;
 
