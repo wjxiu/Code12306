@@ -1,0 +1,6 @@
+spring:
+  redis:
+    host: 192.168.205.3
+redisson:
+  address: "redis://localhost:6379"
+

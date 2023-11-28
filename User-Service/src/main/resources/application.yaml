@@ -1,0 +1,34 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: user-service
+  datasource:
+    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
+    url: jdbc:shardingsphere:classpath:shardingsphere-config.yaml
+    username: root
+    password: 190112
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+  redis:
+    host: 192.168.205.3
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: del_flag
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+framework:
+  cache:
+    redis:
+      bloom-filter:
+        user-register:
+          NAME: user-reg-filter
+test:
+  enabled: true
+#  test.enabled

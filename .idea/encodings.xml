@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/Common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Common/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/GateWay-Service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/GateWay-Service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Order-Service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Order-Service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Pay-Service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Pay-Service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Ticket-Service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Ticket-Service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/User-Service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/User-Service/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/framework/Cache/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/framework/Cache/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/framework/Idempotent/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/framework/Idempotent/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/framework/Mylog/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/framework/Mylog/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/framework/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/framework/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+  </component>
+</project>
