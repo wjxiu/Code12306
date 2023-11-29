@@ -5,6 +5,7 @@ import org.springframework.aop.framework.AopProxy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -44,9 +45,12 @@ public class AbstractFilterChainsContext implements CommandLineRunner {
         log.info("{}",map);
     }
     public <T> void execute(String chainName,T  req){
+
         if (!StringUtils.hasLength(chainName))return;
         List<AbstractFilter> abstractFilters = map.get(chainName);
         if (abstractFilters==null||abstractFilters.isEmpty())throw new NullPointerException(String.format("[%s] Chain of Responsibility ID is undefined.", chainName));
+//        这里不需要排序在上面的run()已经排序了
+//        abstractFilters.sort(Comparator.comparingInt(Ordered::getOrder));
         for (AbstractFilter abstractFilter : abstractFilters) {
             abstractFilter.handle(req);
         }

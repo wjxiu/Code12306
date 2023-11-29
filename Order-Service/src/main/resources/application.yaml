@@ -7,6 +7,8 @@ spring:
     url: jdbc:mysql://localhost:3306/traindb
     username: root
     password: 190112
+  redis:
+    host: 192.168.205.3
   cloud:
     nacos:
       discovery:

@@ -1,22 +1,29 @@
 package org.wjx.service.Impl;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.wjx.common.TicketChainMarkEnum;
+import org.wjx.core.SafeCache;
+import org.wjx.dto.entiey.TicketListDTO;
 import org.wjx.dto.req.CancelTicketOrderReqDTO;
 import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.dto.req.RefundTicketReqDTO;
 import org.wjx.dto.req.TicketPageQueryReqDTO;
-import org.wjx.dto.resp.PayInfoRespDTO;
-import org.wjx.dto.resp.RefundTicketRespDTO;
-import org.wjx.dto.resp.TicketPageQueryRespDTO;
-import org.wjx.dto.resp.TicketPurchaseRespDTO;
+import org.wjx.dto.resp.*;
+import org.wjx.filter.AbstractFilterChainsContext;
 import org.wjx.service.TicketService;
+
+import java.util.List;
 
 /**
  * @author xiu
  * @create 2023-11-28 15:16
  */
-@Service
+@Service@RequiredArgsConstructor
 public class TicketServiceImpl implements TicketService {
+    final AbstractFilterChainsContext chainsContext;
+    final SafeCache cache;
     /**
      * 根据条件分页查询车票
      * @param requestParam 分页查询车票请求参数
@@ -24,6 +31,25 @@ public class TicketServiceImpl implements TicketService {
      */
     @Override
     public TicketPageQueryRespDTO pageListTicketQueryV1(TicketPageQueryReqDTO requestParam) {
+        return null;
+    }
+
+    /**
+     * 根据条件分页查询车票(高性能)
+     * @param requestParam 分页查询车票请求参数
+     * @return 查询车票返回结果
+     */
+    @Override
+    public TicketPageQueryRespDTO pageListTicketQueryV2(TicketPageQueryReqDTO requestParam) {
+//        通过职责链模式过滤参数
+        chainsContext.execute(TicketChainMarkEnum.TRAIN_QUERY_FILTER.name(),requestParam);
+        StringRedisTemplate instance =(StringRedisTemplate) cache.getInstance();
+        List<TicketListDTO> seatResults =getTicketListDTOS(instance,requestParam);
+        return null;
+    }
+
+    private List<TicketListDTO> getTicketListDTOS(StringRedisTemplate instance, TicketPageQueryReqDTO requestParam) {
+//todo
         return null;
     }
 

@@ -11,7 +11,6 @@ import java.util.Optional;
 public  class UserContext {
     private static final ThreadLocal<UserInfoDTO> USER_THREAD_LOCAL = new ThreadLocal<>();
     public static void set(UserInfoDTO userInfoDTO){
-        System.out.println(Thread.currentThread().getId());
         if (userInfoDTO==null) throw new ServiceException("用户信息");
         USER_THREAD_LOCAL.set(userInfoDTO);
     }

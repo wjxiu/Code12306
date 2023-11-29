@@ -1,0 +1,38 @@
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.wjx.dao.mapper.StationMapper">
+    <select id="GetlistRegionStationByFuzzyNameOrFuzzySpell" resultType="org.wjx.dao.DO.StationDO">
+        select *
+        from t_station
+        <where>
+            name like concat(#{name},"%")
+            or spell like concat(#{name},"%")
+        </where>
+    </select>
+    <select id="GetlistRegionByType" resultType="org.wjx.dao.DO.RegionDO">
+        select *
+        from t_region
+        <where>
+            <choose>
+                <when test="type==0">
+                    popular_flag=1
+                </when>
+                <when test="type==1">
+                    `initial` in ('A','B','C','D','E')
+                </when>
+                <when test="type==2">
+                    `initial` in ('F','G','H','I','J')
+                </when>
+                <when test="type==3">
+                    `initial` in ('K','L','M','N','O')
+                </when>
+                <when test="type==4">
+                    `initial` in ('P','Q','R','S','T')
+                </when>
+                <when test="type==5">
+                    `initial` in ('U','V','W','X','Y','Z')
+                </when>
+                <otherwise>1=0</otherwise>
+            </choose>
+        </where>
+    </select>
+</mapper>

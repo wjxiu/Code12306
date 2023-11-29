@@ -11,6 +11,7 @@ import java.nio.charset.Charset;
  * @author xiu
  * @create 2023-11-24 20:07
  */
+
 @RequiredArgsConstructor
 public class RedisKeySerializer implements InitializingBean, RedisSerializer<String> {
 

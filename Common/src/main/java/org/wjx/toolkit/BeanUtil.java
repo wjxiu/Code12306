@@ -24,9 +24,7 @@ public class BeanUtil {
     }
     public static  <T,S> List<T> convertToList(List<S> source,Class<T> targetclazz){
         if (source==null)return null;
-        return source.stream().map(s -> {
-            return mapper.map(s, targetclazz);
-        }).toList();
+        return source.stream().map(s -> mapper.map(s, targetclazz)).toList();
     }
     public static  <T,S> T[] ListconvertToArray(List<S> source,Class<T> targetclazz){
         T[] targets =(T[]) Array.newInstance(targetclazz);

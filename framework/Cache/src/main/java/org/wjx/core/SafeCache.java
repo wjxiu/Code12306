@@ -100,6 +100,7 @@ public interface SafeCache extends Cache{
     void put(@NotBlank String key, Object value, long timeout);
 
     /**
+     * 这里的value会自动转为json,如果传入的是字符串或者json不会被序列化为json,而是直接存入
      * 放入缓存，自定义超时时间
      */
     void put(@NotBlank String key, Object value, long timeout, TimeUnit timeUnit);

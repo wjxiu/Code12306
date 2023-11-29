@@ -30,16 +30,15 @@ public class CacheAutoConfiguration {
 
     private final RedisCustomProperties redisDistributedProperties;
     @Bean
-    @ConditionalOnMissingBean
     public RedisKeySerializer redisKeySerializer() {
         String prefix = RedisCustomProperties.PREFIX;
         String prefixCharset = redisDistributedProperties.getPrefixCharset();
         return new RedisKeySerializer(prefix, prefixCharset);
     }
     @Bean
-    @ConditionalOnMissingBean
-    public StringRedisTemplateProxy proxy(RedisKeySerializer redisKeySerializer, RBloomFilter<String> rBloomFilter
-    , StringRedisTemplate template,RedissonClient redissonClient){
+    public StringRedisTemplateProxy proxy(RedisKeySerializer redisKeySerializer,
+                                          StringRedisTemplate template,
+                                          RedissonClient redissonClient){
         template.setKeySerializer(redisKeySerializer);
         return  new StringRedisTemplateProxy(template, redisDistributedProperties, redissonClient);
     }

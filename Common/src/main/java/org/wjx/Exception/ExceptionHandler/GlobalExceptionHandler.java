@@ -11,9 +11,8 @@ import org.wjx.ErrorCode.BaseErrorCode;
 import org.wjx.Exception.AbstractException;
 import org.wjx.Exception.ClientException;
 import org.wjx.Res;
-
 import javax.servlet.http.HttpServletRequest;
-import java.util.Arrays;
+import javax.validation.ValidationException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -33,7 +32,7 @@ public class GlobalExceptionHandler {
         return Res.failure(exceptionStr, BaseErrorCode.CLIENT_ERROR.code());
     }
 
-    @ExceptionHandler(value = {BindException.class, MethodArgumentNotValidException.class})
+    @ExceptionHandler(value = {BindException.class, MethodArgumentNotValidException.class, ValidationException.class})
     public Object BindException(Exception e) {
         if (e instanceof MethodArgumentNotValidException ex0) {
             return ex0.getFieldErrors().stream().collect(Collectors.toMap(FieldError::getField, f -> {
@@ -44,6 +43,9 @@ public class GlobalExceptionHandler {
             return ex.getFieldErrors().stream().collect(Collectors.toMap(FieldError::getField, f -> {
                 return Optional.ofNullable(f.getDefaultMessage()).orElse("参数校验失败");
             }));
+        }
+        if (e instanceof ValidationException ex) {
+            return ex.getMessage();
         }
         return "unknown";
     }
