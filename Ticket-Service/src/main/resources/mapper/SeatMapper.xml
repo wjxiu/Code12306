@@ -1,0 +1,15 @@
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.wjx.dao.mapper.SeatMapper">
+
+    <select id="listSeatRemainingTicket" resultType="java.lang.Integer">
+        select count(1)
+        where train_id = #{seatDO.trainId}
+          and start_station = #{seatDO.startStation}
+          and end_station = #{seatDO.endStation}
+          and seat_status = '0'
+        <foreach collection="trainCarriageList" open="(" close=")" separator="," item="item">
+            #{item}
+        </foreach>
+        group by carriage_number
+    </select>
+</mapper>
