@@ -1,0 +1,8 @@
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.wjx.dao.mapper.RegionMapper">
+    <select id="selectRegionNameByCode" resultType="java.lang.String">
+        select name
+        from t_station
+        where code = #{code}
+    </select>
+</mapper>

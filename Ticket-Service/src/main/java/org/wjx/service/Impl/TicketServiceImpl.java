@@ -1,10 +1,8 @@
 package org.wjx.service.Impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.BetweenFormatter;
 import cn.hutool.core.date.DateUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +24,8 @@ import org.wjx.filter.AbstractFilterChainsContext;
 import org.wjx.service.TicketService;
 
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,13 +39,12 @@ import java.util.stream.Collectors;
 public class TicketServiceImpl implements TicketService {
     final AbstractFilterChainsContext chainsContext;
     final SafeCache cache;
-    final StationRelationMapper stationRelationMapper;
+    final TrainStationRelationMapper trainStationRelationMapper;
     final TrainMapper trainMapper;
-    final TrainStationPriceMapper trainStationPriceMapper;
-    final StationMapper stationMapper;
     final TrainStationMapper trainStationMapper;
     final CarrageMapper carrageMapper;
     final TrainStationPriceMapper priceMapper;
+    final RegionMapper regionMapper;
 
 
     /**
@@ -63,7 +61,7 @@ public class TicketServiceImpl implements TicketService {
         ticketPageQueryRespDTO.setTrainList(gene);
         ticketPageQueryRespDTO.setDepartureStationList(parseDepartureStationList(gene));
         ticketPageQueryRespDTO.setArrivalStationList(parseArrivalStationList(gene));
-//        setPrice(ticketPageQueryRespDTO);
+        setPrice(ticketPageQueryRespDTO);
         return ticketPageQueryRespDTO;
     }
 
@@ -82,7 +80,8 @@ public class TicketServiceImpl implements TicketService {
                 TrainStationPriceDO trainStationPriceDO = priceMapper.selectOne(new LambdaQueryWrapper<TrainStationPriceDO>().eq(TrainStationPriceDO::getDeparture, departure)
                         .eq(TrainStationPriceDO::getArrival, arrival)
                         .eq(TrainStationPriceDO::getTrainId, trainId).eq(TrainStationPriceDO::getSeatType,seatClassDTO.getType()).select(TrainStationPriceDO::getPrice));
-                seatClassDTO.setPrice(new BigDecimal(trainStationPriceDO.getPrice()));
+                BigDecimal bigDecimal = new BigDecimal(trainStationPriceDO.getPrice() / 100).setScale(2, RoundingMode.HALF_UP);
+                seatClassDTO.setPrice(bigDecimal);
             }
         }
     }
@@ -94,6 +93,8 @@ public class TicketServiceImpl implements TicketService {
      * @return TicketPageQueryRespDTO的
      */
     private TicketPageQueryRespDTO gene(TicketPageQueryReqDTO requestParam) {
+        String  startregion = regionMapper.selectRegionNameByCode(requestParam.getFromStation());
+        String endregion = regionMapper.selectRegionNameByCode(requestParam.getToStation());
         TicketPageQueryRespDTO ticketPageQueryRespDTO = new TicketPageQueryRespDTO();
         HashSet<Integer> typeClassSetRes = new HashSet<>();
         StringBuffer sb = new StringBuffer();
@@ -101,25 +102,10 @@ public class TicketServiceImpl implements TicketService {
         List<TrainStationDO> trainStationDOS = trainStationMapper.querystartRegionAndDepartureTime(starttime, requestParam.getFromStation());
         List<String> list = trainStationDOS.stream().map(a -> a.getTrainId().toString()).toList();
 
-
-
-
-
-
-//        符合要求的列车
-        List<TrainStationDO> trainStationDOS1 = trainStationMapper.queryBytrainIds(list);
-//        查出符合终点站的列车
-        Map<Long, List<TrainStationDO>> collect = trainStationDOS1.stream()
-                .filter(a -> {
-                    if (a.getEndRegion() == null && a.getStartRegion().equals(requestParam.getToStation())) return true;
-                    else if (a.getEndRegion() == null) return false;
-                    return a.getEndRegion().equals(requestParam.getToStation());
-                })
-                .collect(Collectors.groupingBy(TrainStationDO::getTrainId));
+        List<TrainStationRelationDO> trainStationRelationDOS = trainStationRelationMapper.queryByParam(starttime, startregion, endregion);
 //        找到了符合要求的列车
         ArrayList<TicketListDTO> ticketListDTOS = new ArrayList<>();
-        for (Map.Entry<Long, List<TrainStationDO>> longListEntry : collect.entrySet()) {
-            TrainStationDO tstationDO = longListEntry.getValue().get(0);
+        for (TrainStationRelationDO tstationDO : trainStationRelationDOS) {
             Long trainId = tstationDO.getTrainId();
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
@@ -169,20 +155,20 @@ public class TicketServiceImpl implements TicketService {
         return gene.stream().map(TicketListDTO::getArrival).collect(Collectors.toSet()).stream().toList();
     }
 
-    private void trainDoToTicketListDTO(TicketListDTO ticketListDTO, TrainStationDO tstationDO, TrainDO trainDO) {
-        ticketListDTO.setDepartureFlag(Objects.equals(trainDO.getStartRegion(), tstationDO.getStartRegion()));
-        ticketListDTO.setArrivalFlag(trainDO.getEndStation().equals(tstationDO.getEndRegion()));
-        ticketListDTO.setArrival(tstationDO.getArrival());
+    private void trainDoToTicketListDTO(TicketListDTO ticketListDTO, TrainStationRelationDO stationRelationDO,TrainDO trainDO) {
+        ticketListDTO.setDepartureFlag(stationRelationDO.getDepartureFlag());
+        ticketListDTO.setArrivalFlag(stationRelationDO.getArrivalFlag());
+        ticketListDTO.setArrival(stationRelationDO.getArrival());
         ticketListDTO.setTrainNumber(trainDO.getTrainNumber());
         ticketListDTO.setTrainType(trainDO.getTrainType());
         ticketListDTO.setTrainTags(Arrays.stream(trainDO.getTrainTag().split(",")).toList());
         ticketListDTO.setTrainBrand(trainDO.getTrainBrand());
-        ticketListDTO.setDeparture(trainDO.getStartStation());
-        ticketListDTO.setArrivalTime(DateUtil.format(trainDO.getArrivalTime(), "yyyy-MM-dd HH:mm"));
-        ticketListDTO.setDepartureTime(DateUtil.format(trainDO.getDepartureTime(), "yyyy-MM-dd HH:mm"));
+        ticketListDTO.setDeparture(stationRelationDO.getDeparture());
+        ticketListDTO.setArrivalTime(DateUtil.format(stationRelationDO.getArrivalTime(), "yyyy-MM-dd HH:mm"));
+        ticketListDTO.setDepartureTime(DateUtil.format(stationRelationDO.getDepartureTime(), "yyyy-MM-dd HH:mm"));
         ticketListDTO.setSaleStatus(trainDO.getSaleStatus());
-        ticketListDTO.setDuration(DateUtil.formatBetween(trainDO.getArrivalTime(), trainDO.getDepartureTime(), BetweenFormatter.Level.HOUR));
-        ticketListDTO.setDaysArrived(DateUtil.formatBetween(trainDO.getArrivalTime(), trainDO.getDepartureTime(), BetweenFormatter.Level.DAY).charAt(0) - '0');
+        ticketListDTO.setDuration(DateUtil.formatBetween(stationRelationDO.getArrivalTime(), stationRelationDO.getDepartureTime(), BetweenFormatter.Level.HOUR));
+        ticketListDTO.setDaysArrived(DateUtil.formatBetween(stationRelationDO.getArrivalTime(), stationRelationDO.getDepartureTime(), BetweenFormatter.Level.DAY).charAt(0) - '0');
         ticketListDTO.setSaleTime(DateUtil.format(trainDO.getSaleTime(), "yyyy-MM-dd HH:mm"));
     }
 

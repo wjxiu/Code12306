@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.springframework.data.repository.query.Param;
 import org.wjx.dao.DO.RegionDO;
 import org.wjx.dao.DO.StationDO;
-import org.wjx.dao.DO.TrainStationRelationDO;
 
 import java.util.List;
 
