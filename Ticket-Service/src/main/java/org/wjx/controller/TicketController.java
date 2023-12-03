@@ -35,7 +35,7 @@ import java.util.List;
 public class TicketController {
     private final TicketService ticketService;
     @GetMapping("/query")
-    public Res<TicketPageQueryRespDTO> pageListTicketQuery( @Validated TicketPageQueryReqDTO requestParam) {
+    public Res<TicketPageQueryRespDTO> pageListTicketQuery( @Validated @RequestBody  TicketPageQueryReqDTO requestParam) {
         return Res.success(ticketService.pageListTicketQueryV1(requestParam));
     }
     @GetMapping("/query/v2")

@@ -1,6 +1,9 @@
 package org.wjx.dto.entiey;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -8,7 +11,7 @@ import java.util.List;
  * @author xiu
  * @create 2023-11-29 9:38
  */
-@Data
+@Data@Builder@NoArgsConstructor@AllArgsConstructor
 public class TicketListDTO {
     /**
      * 列车 ID
@@ -31,12 +34,12 @@ public class TicketListDTO {
     private String arrivalTime;
 
     /**
-     * 历时
+     * 历时 缺
      */
     private String duration;
 
     /**
-     * 到达天数
+     * 到达天数 缺
      */
     private Integer daysArrived;
 
@@ -86,7 +89,7 @@ public class TicketListDTO {
     private String trainBrand;
 
     /**
-     * 席别实体集合
+     * 席别实体集合 缺
      */
     private List<SeatClassDTO> seatClassList;
 }

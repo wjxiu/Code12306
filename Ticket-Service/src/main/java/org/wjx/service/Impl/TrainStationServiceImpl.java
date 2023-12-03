@@ -4,9 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.wjx.dao.DO.TrainStationDO;
 import org.wjx.dao.mapper.StationMapper;
 import org.wjx.dao.mapper.TrainStationMapper;
-import org.wjx.dto.entiey.TrainStationDO;
+
 import org.wjx.dto.resp.TrainStationQueryRespDTO;
 import org.wjx.service.TrainStationService;
 import org.wjx.toolkit.BeanUtil;

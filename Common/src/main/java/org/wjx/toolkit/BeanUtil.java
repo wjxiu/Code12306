@@ -1,8 +1,11 @@
 package org.wjx.toolkit;
 
 import org.dozer.DozerBeanMapper;
+import org.dozer.loader.api.BeanMappingBuilder;
+import org.dozer.loader.api.TypeMappingOptions;
 
 import java.lang.reflect.Array;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 

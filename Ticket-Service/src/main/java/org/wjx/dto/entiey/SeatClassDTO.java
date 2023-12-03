@@ -22,7 +22,7 @@ public class SeatClassDTO {
     private Integer type;
 
     /**
-     * 席别数量
+     * 席别数量 缺
      */
     private Integer quantity;
 
@@ -32,7 +32,7 @@ public class SeatClassDTO {
     private BigDecimal price;
 
     /**
-     * 席别候补标识
+     * 席别候补标识 缺
      */
     private Boolean candidate;
 }

@@ -35,19 +35,19 @@ public class TicketPageQueryReqDTO extends PageRequest {
      * 出发日期
      */
     @DateTimeFormat(pattern = "yyyy-MM-dd")
-    @FutureOrPresent(message = "出发日期过早")
+//    @FutureOrPresent(message = "出发日期过早")
     private Date departureDate;
 
 
     /**
      * 出发站点
      */
-    @NotBlank
+
     private String departure;
 
     /**
      * 到达站点
      */
-    @NotBlank
+
     private String arrival;
 }

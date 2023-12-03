@@ -3,6 +3,7 @@ package org.wjx.dao.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.springframework.data.repository.query.Param;
 import org.wjx.dao.DO.SeatDO;
+import org.wjx.dto.entiey.SeatClassDTO;
 
 import java.util.List;
 
