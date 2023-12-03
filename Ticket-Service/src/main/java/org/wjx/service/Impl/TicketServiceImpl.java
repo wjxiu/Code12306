@@ -25,6 +25,7 @@ import org.wjx.dto.resp.*;
 import org.wjx.filter.AbstractFilterChainsContext;
 import org.wjx.service.TicketService;
 
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,6 +46,7 @@ public class TicketServiceImpl implements TicketService {
     final StationMapper stationMapper;
     final TrainStationMapper trainStationMapper;
     final CarrageMapper carrageMapper;
+    final TrainStationPriceMapper priceMapper;
 
 
     /**
@@ -61,7 +63,28 @@ public class TicketServiceImpl implements TicketService {
         ticketPageQueryRespDTO.setTrainList(gene);
         ticketPageQueryRespDTO.setDepartureStationList(parseDepartureStationList(gene));
         ticketPageQueryRespDTO.setArrivalStationList(parseArrivalStationList(gene));
+//        setPrice(ticketPageQueryRespDTO);
         return ticketPageQueryRespDTO;
+    }
+
+    /**
+     * 给所有结果查出票价
+     * @param ticketPageQueryRespDTO
+     */
+    private void setPrice(TicketPageQueryRespDTO ticketPageQueryRespDTO) {
+        List<TicketListDTO> trainList = ticketPageQueryRespDTO.getTrainList();
+
+        for (TicketListDTO ticketListDTO : trainList) {
+            String departure = ticketListDTO.getDeparture();
+            String arrival = ticketListDTO.getArrival();
+            String trainId = ticketListDTO.getTrainId();
+            for (SeatClassDTO seatClassDTO : ticketListDTO.getSeatClassList()) {
+                TrainStationPriceDO trainStationPriceDO = priceMapper.selectOne(new LambdaQueryWrapper<TrainStationPriceDO>().eq(TrainStationPriceDO::getDeparture, departure)
+                        .eq(TrainStationPriceDO::getArrival, arrival)
+                        .eq(TrainStationPriceDO::getTrainId, trainId).eq(TrainStationPriceDO::getSeatType,seatClassDTO.getType()).select(TrainStationPriceDO::getPrice));
+                seatClassDTO.setPrice(new BigDecimal(trainStationPriceDO.getPrice()));
+            }
+        }
     }
 
     /**
@@ -77,6 +100,12 @@ public class TicketServiceImpl implements TicketService {
         String starttime = DateUtil.format(requestParam.getDepartureDate(), "yyyy-MM-dd");
         List<TrainStationDO> trainStationDOS = trainStationMapper.querystartRegionAndDepartureTime(starttime, requestParam.getFromStation());
         List<String> list = trainStationDOS.stream().map(a -> a.getTrainId().toString()).toList();
+
+
+
+
+
+
 //        符合要求的列车
         List<TrainStationDO> trainStationDOS1 = trainStationMapper.queryBytrainIds(list);
 //        查出符合终点站的列车
@@ -143,8 +172,7 @@ public class TicketServiceImpl implements TicketService {
     private void trainDoToTicketListDTO(TicketListDTO ticketListDTO, TrainStationDO tstationDO, TrainDO trainDO) {
         ticketListDTO.setDepartureFlag(Objects.equals(trainDO.getStartRegion(), tstationDO.getStartRegion()));
         ticketListDTO.setArrivalFlag(trainDO.getEndStation().equals(tstationDO.getEndRegion()));
-
-        ticketListDTO.setArrival(trainDO.getEndRegion());
+        ticketListDTO.setArrival(tstationDO.getArrival());
         ticketListDTO.setTrainNumber(trainDO.getTrainNumber());
         ticketListDTO.setTrainType(trainDO.getTrainType());
         ticketListDTO.setTrainTags(Arrays.stream(trainDO.getTrainTag().split(",")).toList());
