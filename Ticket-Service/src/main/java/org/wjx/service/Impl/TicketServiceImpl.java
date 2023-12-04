@@ -2,14 +2,17 @@ package org.wjx.service.Impl;
 
 import cn.hutool.core.date.BetweenFormatter;
 import cn.hutool.core.date.DateUtil;
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.wjx.common.TicketChainMarkEnum;
+import org.wjx.core.CacheLoader;
 import org.wjx.core.SafeCache;
 import org.wjx.dao.DO.*;
 import org.wjx.dao.mapper.*;
@@ -22,11 +25,13 @@ import org.wjx.dto.req.TicketPageQueryReqDTO;
 import org.wjx.dto.resp.*;
 import org.wjx.filter.AbstractFilterChainsContext;
 import org.wjx.service.TicketService;
+import org.wjx.toolkit.BeanUtil;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -67,20 +72,28 @@ public class TicketServiceImpl implements TicketService {
 
     /**
      * 给所有结果查出票价
+     *
      * @param ticketPageQueryRespDTO
      */
     private void setPrice(TicketPageQueryRespDTO ticketPageQueryRespDTO) {
         List<TicketListDTO> trainList = ticketPageQueryRespDTO.getTrainList();
-
         for (TicketListDTO ticketListDTO : trainList) {
             String departure = ticketListDTO.getDeparture();
             String arrival = ticketListDTO.getArrival();
             String trainId = ticketListDTO.getTrainId();
             for (SeatClassDTO seatClassDTO : ticketListDTO.getSeatClassList()) {
-                TrainStationPriceDO trainStationPriceDO = priceMapper.selectOne(new LambdaQueryWrapper<TrainStationPriceDO>().eq(TrainStationPriceDO::getDeparture, departure)
-                        .eq(TrainStationPriceDO::getArrival, arrival)
-                        .eq(TrainStationPriceDO::getTrainId, trainId).eq(TrainStationPriceDO::getSeatType,seatClassDTO.getType()).select(TrainStationPriceDO::getPrice));
-                BigDecimal bigDecimal = new BigDecimal(trainStationPriceDO.getPrice() / 100).setScale(2, RoundingMode.HALF_UP);
+                String trainStationPriceDOString = cache.SafeGetOfHash("ticket:sevice:train:price:" +
+                        String.join(":", departure, arrival, trainId), seatClassDTO.getType().toString(), String.class, (CacheLoader<String>) () -> {
+                    TrainStationPriceDO trainStationPriceDO = priceMapper.selectOne(new LambdaQueryWrapper<TrainStationPriceDO>()
+                            .eq(TrainStationPriceDO::getDeparture, departure)
+                            .eq(TrainStationPriceDO::getArrival, arrival)
+                            .eq(TrainStationPriceDO::getTrainId, trainId)
+                            .eq(TrainStationPriceDO::getSeatType, seatClassDTO.getType())
+                            .select(TrainStationPriceDO::getPrice));
+                    return trainStationPriceDO.getPrice().toString();
+                });
+                Long price = JSON.parseObject(trainStationPriceDOString, Long.class);
+                BigDecimal bigDecimal = new BigDecimal(price / 100).setScale(2, RoundingMode.HALF_UP);
                 seatClassDTO.setPrice(bigDecimal);
             }
         }
@@ -93,29 +106,44 @@ public class TicketServiceImpl implements TicketService {
      * @return TicketPageQueryRespDTO的
      */
     private TicketPageQueryRespDTO gene(TicketPageQueryReqDTO requestParam) {
-        String  startregion = regionMapper.selectRegionNameByCode(requestParam.getFromStation());
-        String endregion = regionMapper.selectRegionNameByCode(requestParam.getToStation());
+        String startregion = cache.SafeGetOfHash("ticket:sevice:code:trainName", requestParam.getFromStation(), String.class, () -> {
+            return regionMapper.selectRegionNameByCode(requestParam.getFromStation());
+        });
+        String endregion = cache.SafeGetOfHash("ticket:sevice:code:trainName", requestParam.getToStation(), String.class, () -> {
+            return regionMapper.selectRegionNameByCode(requestParam.getToStation());
+        });
         TicketPageQueryRespDTO ticketPageQueryRespDTO = new TicketPageQueryRespDTO();
         HashSet<Integer> typeClassSetRes = new HashSet<>();
         StringBuffer sb = new StringBuffer();
         String starttime = DateUtil.format(requestParam.getDepartureDate(), "yyyy-MM-dd");
-        List<TrainStationDO> trainStationDOS = trainStationMapper.querystartRegionAndDepartureTime(starttime, requestParam.getFromStation());
-        List<String> list = trainStationDOS.stream().map(a -> a.getTrainId().toString()).toList();
 
-        List<TrainStationRelationDO> trainStationRelationDOS = trainStationRelationMapper.queryByParam(starttime, startregion, endregion);
+        String list = cache.safeGet("ticket:sevice:train:query" + String.join("-", starttime, startregion, endregion),
+                String.class, 15L, TimeUnit.DAYS,
+                () -> JSON.toJSONString(trainStationRelationMapper.queryByParam(starttime, startregion, endregion)));
+        List<TrainStationRelationDO> trainStationRelationDOS = JSON.parseArray(list, TrainStationRelationDO.class);
 //        找到了符合要求的列车
         ArrayList<TicketListDTO> ticketListDTOS = new ArrayList<>();
         for (TrainStationRelationDO tstationDO : trainStationRelationDOS) {
-            Long trainId = tstationDO.getTrainId();
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
-            ticketListDTO.setTrainId(trainId.toString());
-            TrainDO trainDO = trainMapper.selectById(ticketListDTO.getTrainId());
+            ticketListDTO.setTrainId(tstationDO.getTrainId().toString());
+            String trainDoString = cache.safeGet("ticket:sevice:train:id:" + ticketListDTO.getTrainId(), String.class, 15L, TimeUnit.DAYS, () -> {
+                return JSON.toJSONString(trainMapper.selectById(ticketListDTO.getTrainId()));
+            });
+            TrainDO trainDO = JSON.parseObject(trainDoString, TrainDO.class);
             sb.append(trainDO.getTrainBrand()).append(",");
             trainDoToTicketListDTO(ticketListDTO, tstationDO, trainDO);
         }
         List<Long> list1 = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
-        List<CarriageDO> carriageDOS = carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>().in(CarriageDO::getTrainId, list1));
+        String collect = list1.stream().map(String::valueOf).collect(Collectors.joining("-"));
+
+        String carriageDOString = cache.safeGet("ticket:sevice:train:carriage:" +collect , String.class, 15L, TimeUnit.DAYS, () -> {
+                return JSON.toJSONString(carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
+                        .in(CarriageDO::getTrainId, list1)
+                        .select(CarriageDO::getCarriageType,CarriageDO::getCarriageNumber,CarriageDO::getTrainId,CarriageDO::getSeatCount))
+                );
+            });
+        List<CarriageDO> carriageDOS = JSON.parseArray(carriageDOString, CarriageDO.class);
         Map<String, Set<Integer>> trainToType = carriageDOS.stream()
                 .collect(Collectors.groupingBy(a -> a.getTrainId().toString(),
                         Collectors.mapping(CarriageDO::getCarriageType, Collectors.toSet())));
@@ -131,6 +159,14 @@ public class TicketServiceImpl implements TicketService {
             }
             ticketListDTO.setSeatClassList(seatclasses);
         }
+        setQuantity(carriageDOS, ticketListDTOS);
+        ticketPageQueryRespDTO.setTrainList(ticketListDTOS);
+        ticketPageQueryRespDTO.setSeatClassTypeList(typeClassSetRes.stream().toList());
+        ticketPageQueryRespDTO.setTrainBrandList(Arrays.stream(sb.toString().split(",")).map(Integer::parseInt).distinct().toList());
+        return ticketPageQueryRespDTO;
+    }
+
+    private void setQuantity(List<CarriageDO> carriageDOS, ArrayList<TicketListDTO> ticketListDTOS) {
         Map<AbstractMap.SimpleEntry<String, Integer>, Integer> simpleEntryIntegerMap = groupByTrainIdAndCarriageType(carriageDOS);
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             String trainId = ticketListDTO.getTrainId();
@@ -140,12 +176,7 @@ public class TicketServiceImpl implements TicketService {
                 seatClassDTO.setQuantity(value);
             }
         }
-        ticketPageQueryRespDTO.setTrainList(ticketListDTOS);
-        ticketPageQueryRespDTO.setSeatClassTypeList(typeClassSetRes.stream().toList());
-        ticketPageQueryRespDTO.setTrainBrandList(Arrays.stream(sb.toString().split(",")).map(Integer::parseInt).distinct().toList());
-        return ticketPageQueryRespDTO;
     }
-
 
     private List<String> parseDepartureStationList(List<TicketListDTO> gene) {
         return gene.stream().map(TicketListDTO::getDeparture).collect(Collectors.toSet()).stream().toList();
@@ -155,7 +186,7 @@ public class TicketServiceImpl implements TicketService {
         return gene.stream().map(TicketListDTO::getArrival).collect(Collectors.toSet()).stream().toList();
     }
 
-    private void trainDoToTicketListDTO(TicketListDTO ticketListDTO, TrainStationRelationDO stationRelationDO,TrainDO trainDO) {
+    private void trainDoToTicketListDTO(TicketListDTO ticketListDTO, TrainStationRelationDO stationRelationDO, TrainDO trainDO) {
         ticketListDTO.setDepartureFlag(stationRelationDO.getDepartureFlag());
         ticketListDTO.setArrivalFlag(stationRelationDO.getArrivalFlag());
         ticketListDTO.setArrival(stationRelationDO.getArrival());

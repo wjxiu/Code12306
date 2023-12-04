@@ -3,7 +3,6 @@ package org.wjx.core;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 
 
 import java.util.Collection;
@@ -23,9 +22,12 @@ public interface Cache {
      */
     void put(@NotBlank String key, Object value);
 
-    /**
-     * 如果 keys 全部不存在，则新增，返回 true，反之 false
-     */
+
+    public <T> T SafeGetOfHash(String key, String hashkey, Class<T> clazz,CacheLoader<T> loader);
+
+        /**
+         * 如果 keys 全部不存在，则新增，返回 true，反之 false
+         */
 //    Boolean putIfAllAbsent(@NotNull Collection<String> keys);
 
     /**

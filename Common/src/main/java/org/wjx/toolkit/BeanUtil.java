@@ -1,11 +1,9 @@
 package org.wjx.toolkit;
 
-import org.dozer.DozerBeanMapper;
-import org.dozer.loader.api.BeanMappingBuilder;
-import org.dozer.loader.api.TypeMappingOptions;
+import com.github.dozermapper.core.DozerBeanMapperBuilder;
+import com.github.dozermapper.core.Mapper;
 
 import java.lang.reflect.Array;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,12 +12,11 @@ import java.util.Optional;
  * @create 2023-11-20 18:01
  */
 public class BeanUtil {
-    static DozerBeanMapper mapper =new DozerBeanMapper();
+    static Mapper mapper= DozerBeanMapperBuilder.buildDefault();
     public static <T,S> T convert(S source,T target){
         Optional.of(source).ifPresent((S s) ->{mapper.map(s,target);});
         return target;
     }
-
     public static  <T,S> T convert(S source,Class<T> targetclazz){
         return Optional.ofNullable(source).map((S s) -> {
             return mapper.map(s, targetclazz);

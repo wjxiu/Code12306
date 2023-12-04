@@ -5,13 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.RedisScript;
-import org.springframework.stereotype.Component;
+import org.wjx.Exception.ServiceException;
 import org.wjx.config.RedisCustomProperties;
+import org.wjx.toolkit.BeanUtil;
 import org.wjx.utils.Cacheutil;
 import org.wjx.utils.FastJson2Util;
 
@@ -46,7 +44,34 @@ public class StringRedisTemplateProxy implements SafeCache {
     @Override
     public void put(String key, Object value) {
         put(key, value, redisproperties.timeOut, redisproperties.timeUnit);
+    }
+    public void putOfHash(String key, String hashkey, Object value) {
+        if (value instanceof String) {
+            redisTemplate.opsForHash().put(key, hashkey, value);
+        } else {
+            redisTemplate.opsForHash().put(key, hashkey, JSON.toJSONString(value));
+        }
+    }
 
+    public <T> T SafeGetOfHash(String key, String hashkey, Class<T> clazz,CacheLoader<T> loader) {
+        T res =(T) redisTemplate.opsForHash().get(key, hashkey);
+        if (res != null) return res;
+        RLock lock = redissonClient.getLock(KEYPREFIX + key + ":" + hashkey);
+        boolean b = lock.tryLock();
+        try {
+            if (b) {
+                res =(T) redisTemplate.opsForHash().get(key, hashkey);
+                if (res != null) return res;
+                res = loader.load();
+                putOfHash(key,hashkey,res);
+            }
+        } finally {
+            if (lock != null) {
+                lock.unlock();
+            }
+        }
+        if (res != null) return res;
+        else throw new ServiceException("加载缓存失败");
     }
 
     public void put(String key, Object value, Long timeout) {
@@ -54,7 +79,10 @@ public class StringRedisTemplateProxy implements SafeCache {
     }
 
     public void put(String key, Object value, Long timeout, TimeUnit timeUnit) {
-        redisTemplate.opsForValue().set(key, JSON.toJSONString(value), timeout, timeUnit);
+        if (value instanceof String) {
+            redisTemplate.opsForValue().set(key, (String) value, timeout, timeUnit);
+        } else
+            redisTemplate.opsForValue().set(key, JSON.toJSONString(value), timeout, timeUnit);
     }
 
 //    @Override
@@ -142,14 +170,14 @@ public class StringRedisTemplateProxy implements SafeCache {
 
     @Override
     public void put(String key, Object value, long timeout) {
-        put(key,value,timeout,redisproperties.timeUnit);
+        put(key, value, timeout, redisproperties.timeUnit);
     }
 
     @Override
     public void put(String key, Object value, long timeout, TimeUnit timeUnit) {
-        if (value instanceof String){
+        if (value instanceof String) {
             redisTemplate.opsForValue().set(key, value.toString(), timeout, timeUnit);
-        }else{
+        } else {
             redisTemplate.opsForValue().set(key, JSON.toJSONString(value), timeout, timeUnit);
         }
     }
@@ -207,7 +235,6 @@ public class StringRedisTemplateProxy implements SafeCache {
             return (T) value;
         }
         RLock lock = redissonClient.getLock(KEYPREFIX + key);
-        System.out.println(lock.getName());
         try {
             if (lock.tryLock()) {
                 if (!Cacheutil.isNuLLOrBlank(value = get(key, clazz))) {
@@ -220,7 +247,6 @@ public class StringRedisTemplateProxy implements SafeCache {
             }
         } finally {
             lock.unlock();
-            System.out.println("已经解锁");
         }
         return value;
     }
