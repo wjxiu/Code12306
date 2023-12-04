@@ -14,5 +14,6 @@ public interface TrainStationMapper extends BaseMapper<TrainStationDO> {
     public List<TrainStationDO> querystartRegionAndDepartureTime(@Param("startTime") String startTime,
                                                                          @Param("startRegion") String startRegion);
     List<TrainStationDO> queryBytrainIds(@Param("list") List<String> ids);
+    List<TrainStationDO> queryBytrainId(@Param("id") String id);
 
 }

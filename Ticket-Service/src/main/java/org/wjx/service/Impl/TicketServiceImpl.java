@@ -25,10 +25,8 @@ import org.wjx.dto.req.TicketPageQueryReqDTO;
 import org.wjx.dto.resp.*;
 import org.wjx.filter.AbstractFilterChainsContext;
 import org.wjx.service.TicketService;
-import org.wjx.toolkit.BeanUtil;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +48,7 @@ public class TicketServiceImpl implements TicketService {
     final CarrageMapper carrageMapper;
     final TrainStationPriceMapper priceMapper;
     final RegionMapper regionMapper;
+    final SeatMapper seatMapper;
 
 
     /**
@@ -116,7 +115,6 @@ public class TicketServiceImpl implements TicketService {
         HashSet<Integer> typeClassSetRes = new HashSet<>();
         StringBuffer sb = new StringBuffer();
         String starttime = DateUtil.format(requestParam.getDepartureDate(), "yyyy-MM-dd");
-
         String list = cache.safeGet("ticket:sevice:train:query" + String.join("-", starttime, startregion, endregion),
                 String.class, 15L, TimeUnit.DAYS,
                 () -> JSON.toJSONString(trainStationRelationMapper.queryByParam(starttime, startregion, endregion)));
@@ -137,16 +135,20 @@ public class TicketServiceImpl implements TicketService {
         List<Long> list1 = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
         String collect = list1.stream().map(String::valueOf).collect(Collectors.joining("-"));
 
-        String carriageDOString = cache.safeGet("ticket:sevice:train:carriage:" +collect , String.class, 15L, TimeUnit.DAYS, () -> {
-                return JSON.toJSONString(carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
-                        .in(CarriageDO::getTrainId, list1)
-                        .select(CarriageDO::getCarriageType,CarriageDO::getCarriageNumber,CarriageDO::getTrainId,CarriageDO::getSeatCount))
-                );
-            });
+        String carriageDOString = cache.safeGet("ticket:sevice:train:carriage:" + collect, String.class, 15L, TimeUnit.DAYS, () -> {
+            return JSON.toJSONString(carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
+                    .in(CarriageDO::getTrainId, list1)
+                    .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount))
+            );
+        });
+//        这里获取到座位信息
         List<CarriageDO> carriageDOS = JSON.parseArray(carriageDOString, CarriageDO.class);
         Map<String, Set<Integer>> trainToType = carriageDOS.stream()
                 .collect(Collectors.groupingBy(a -> a.getTrainId().toString(),
                         Collectors.mapping(CarriageDO::getCarriageType, Collectors.toSet())));
+
+        GeneCacheOfTicketForParchase(ticketListDTOS, trainToType);
+
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             ArrayList<SeatClassDTO> seatclasses = new ArrayList<>();
             Set<Integer> seatTypeSet = trainToType.get(ticketListDTO.getTrainId());
@@ -164,6 +166,55 @@ public class TicketServiceImpl implements TicketService {
         ticketPageQueryRespDTO.setSeatClassTypeList(typeClassSetRes.stream().toList());
         ticketPageQueryRespDTO.setTrainBrandList(Arrays.stream(sb.toString().split(",")).map(Integer::parseInt).distinct().toList());
         return ticketPageQueryRespDTO;
+    }
+
+    /**
+     * 三个for循环保存 列车id-开始车站-结束车站,field:seatType value seatcount
+     */
+    private void GeneCacheOfTicketForParchase(ArrayList<TicketListDTO> ticketListDTOS, Map<String, Set<Integer>> trainToType) {
+        HashOperations hashOperations = cache.getInstance().opsForHash();
+        for (TicketListDTO ticketListDTO : ticketListDTOS) {
+            String trainId = ticketListDTO.getTrainId();
+//           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
+//           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
+         String  trainStationDOSTring=   cache.safeGet("ticket-service:train:"+trainId,String.class,15L,TimeUnit.DAYS,()->{
+                return JSON.toJSONString(trainStationMapper.queryBytrainId(trainId));
+            });
+            List<TrainStationDO> trainStationDOS =JSON.parseArray(trainStationDOSTring,TrainStationDO.class);
+            ArrayList<String[]> trainStationDOS1 = geneListOfCache(trainStationDOS);
+            for (String[] stationDOS : trainStationDOS1) {
+                String stratstation = stationDOS[0];
+                String endstation = stationDOS[1];
+                Set<Integer> types = trainToType.get(trainId);
+                for (Integer type : types) {
+                    Object o = hashOperations.get("ticket-service:train-station-price:" + String.join("-", trainId, stratstation, endstation), type.toString());
+                    if (o == null) {
+                        Integer count = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratstation, endstation);
+                        hashOperations.put("ticket-service:train-station-price:" + String.join("-", trainId, stratstation, endstation), type.toString(), count.toString());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 1 2 3生成下面的集合,用于生成缓存中提供给购票的数据(座位数目)
+     * 1, 2
+     * 1, 3
+     * 2, 3
+     *
+     * @param arr
+     * @return
+     */
+    ArrayList<String[]> geneListOfCache(List<TrainStationDO> arr) {
+        ArrayList<String[]> res = new ArrayList<>();
+        arr.sort(Comparator.comparingInt(o -> Integer.parseInt(o.getSequence())));
+        for (int i = 0; i < arr.size(); i++) {
+            for (int j = i + 1; j < arr.size(); j++) {
+                res.add(new String[]{arr.get(i).getDeparture(), arr.get(j).getDeparture()});
+            }
+        }
+        return res;
     }
 
     private void setQuantity(List<CarriageDO> carriageDOS, ArrayList<TicketListDTO> ticketListDTOS) {

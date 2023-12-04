@@ -13,4 +13,8 @@ import java.util.List;
  */
 public interface SeatMapper extends BaseMapper<SeatDO> {
     List<Integer> listSeatRemainingTicket(@Param("seatDO") SeatDO seatDO,@Param("trainCarriageList") List<String> trainCarriageList);
+    public Integer countByTrainIdAndSeatTypeAndArrivalAndDeparture(@org.apache.ibatis.annotations.Param("id") String id,
+                                                                   @org.apache.ibatis.annotations.Param("SeatType") Integer SeatType,
+                                                                   @org.apache.ibatis.annotations.Param("Dearture") String Dearture,
+                                                                   @org.apache.ibatis.annotations.Param("Arrival") String Arrival);
 }
