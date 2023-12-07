@@ -34,4 +34,11 @@ public class RedisKeyConstant {
      * 用户乘车人列表，Key Prefix + 用户名
      */
     public static final String USER_PASSENGER_LIST = "user-service:user-passenger-list:";
+    public static final String REMAINTICKETOFSEAT_TRAIN="ticket-service:train-seat-count:";
+    /**
+     * 保存列车的座位type集合
+     */
+    public static final String TRAINCARRAGE ="ticket-sevice:train:carriage:";
+    public static final String LOCK_PURCHASE_TICKETS = "ticket-service:lock:purchase_tickets_%s";
+
 }

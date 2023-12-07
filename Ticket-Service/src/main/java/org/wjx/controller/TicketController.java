@@ -1,26 +1,22 @@
 package org.wjx.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.wjx.MyLog;
 import org.wjx.Res;
+import org.wjx.dao.DO.TrainStationDO;
+import org.wjx.dao.mapper.TrainStationMapper;
 import org.wjx.dto.req.CancelTicketOrderReqDTO;
 import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.dto.req.RefundTicketReqDTO;
 import org.wjx.dto.req.TicketPageQueryReqDTO;
-import org.wjx.dto.resp.PayInfoRespDTO;
-import org.wjx.dto.resp.RefundTicketRespDTO;
-import org.wjx.dto.resp.TicketPageQueryRespDTO;
-import org.wjx.dto.resp.TicketPurchaseRespDTO;
+import org.wjx.dto.resp.*;
 import org.wjx.service.TicketService;
+import org.wjx.utils.BeanUtil;
 
-import javax.validation.Valid;
-import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
-import java.time.Period;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -34,6 +30,7 @@ import java.util.List;
 @RequestMapping("/api/ticket-service/ticket")
 public class TicketController {
     private final TicketService ticketService;
+    final TrainStationMapper trainStationMapper;
     @GetMapping("/query")
     public Res<TicketPageQueryRespDTO> pageListTicketQuery( @Validated @RequestBody  TicketPageQueryReqDTO requestParam) {
         return Res.success(ticketService.pageListTicketQueryV1(requestParam));
@@ -65,5 +62,14 @@ public class TicketController {
     @PostMapping("/api/ticket-service/ticket/refund")
     public Res<RefundTicketRespDTO> commonTicketRefund(@Validated @RequestBody RefundTicketReqDTO requestParam) {
         return Res.success(ticketService.commonTicketRefund(requestParam));
+    }
+    /**
+     * 根据列车 ID 查询站点信息
+     */
+    @GetMapping("/api/ticket-service/train-station/query")
+    public Res<List<TrainStationQueryRespDTO>> listTrainStationQuery(String trainId) {
+        List<TrainStationDO> trainStationDOS = trainStationMapper.selectList(new LambdaQueryWrapper<TrainStationDO>().eq(TrainStationDO::getStationId, trainId));
+        List<TrainStationQueryRespDTO> trainStationQueryRespDTOS = BeanUtil.convertToList(trainStationDOS, TrainStationQueryRespDTO.class);
+        return Res.success(trainStationQueryRespDTOS);
     }
 }

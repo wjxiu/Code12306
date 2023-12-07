@@ -8,7 +8,6 @@ spring:
     url: jdbc:shardingsphere:classpath:shardingsphere-config.yaml
     username: root
     password: 190112
-
   cloud:
     nacos:
       discovery:

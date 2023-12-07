@@ -12,7 +12,7 @@ import org.wjx.dto.req.UserQueryActualRespDTO;
 import org.wjx.dto.req.UserUpdateReqDTO;
 import org.wjx.dto.resp.UserQueryRespDTO;
 import org.wjx.service.UserService;
-import org.wjx.toolkit.BeanUtil;
+import org.wjx.utils.BeanUtil;
 
 /**
  * @author xiu

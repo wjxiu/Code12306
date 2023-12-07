@@ -3,10 +3,12 @@
 
     <select id="listSeatRemainingTicket" resultType="java.lang.Integer">
         select count(1)
+        from t_seat
         where train_id = #{seatDO.trainId}
           and start_station = #{seatDO.startStation}
           and end_station = #{seatDO.endStation}
           and seat_status = '0'
+          and   carriage_number in
         <foreach collection="trainCarriageList" open="(" close=")" separator="," item="item">
             #{item}
         </foreach>

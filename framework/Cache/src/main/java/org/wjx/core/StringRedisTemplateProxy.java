@@ -9,7 +9,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.wjx.Exception.ServiceException;
 import org.wjx.config.RedisCustomProperties;
-import org.wjx.toolkit.BeanUtil;
 import org.wjx.utils.Cacheutil;
 import org.wjx.utils.FastJson2Util;
 

@@ -2,13 +2,10 @@ package org.wjx.filter;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.ui.ModelMap;
 import org.springframework.util.StringUtils;
-import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.context.request.WebRequestInterceptor;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.wjx.Exception.ClientException;
-import org.wjx.toolkit.JWTUtil;
+import org.wjx.utils.JWTUtil;
 import org.wjx.user.core.UserContext;
 import org.wjx.user.core.UserInfoDTO;
 

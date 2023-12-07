@@ -17,5 +17,5 @@ import java.util.stream.Collectors;
 public interface CarrageMapper extends BaseMapper<CarriageDO> {
     // 使用 MyBatis 提供的方法，按 train_id 分组，统计每个分组中不同的 carriage_type 的数量
     @MapKey("train_id")
-    List<Map<String, Object>> countCarriageTypeByTrainId(@Param("trainIdList") Collection<String> ids);
+    List<CarriageDO> countCarriageTypeByTrainId(@Param("trainIdList") Collection<String> ids);
 }

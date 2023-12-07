@@ -13,7 +13,6 @@ import java.util.Map;
  * @author xiu
  * @create 2023-11-24 19:18
  */
-@Component
 public class ApplicationContextHolder implements ApplicationContextAware {
    static ApplicationContext context;
 

@@ -3,14 +3,16 @@ package org.wjx.base;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
+
 import java.util.Date;
 
 /**
  * @author xiu
- * @create 2023-11-20 16:09
+ * @create 2023-12-07 15:09
  */
 @Data
 public class BaseDO {
+
     /**
      * 创建时间
      */
@@ -28,4 +30,5 @@ public class BaseDO {
      */
     @TableField(fill = FieldFill.INSERT)
     private Integer delFlag;
+
 }

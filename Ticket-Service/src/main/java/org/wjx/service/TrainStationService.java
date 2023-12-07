@@ -1,5 +1,6 @@
 package org.wjx.service;
 
+import org.wjx.dao.DO.RouteDTO;
 import org.wjx.dto.resp.TrainStationQueryRespDTO;
 
 import java.util.List;
@@ -10,4 +11,14 @@ import java.util.List;
  */
 public interface TrainStationService {
     List<TrainStationQueryRespDTO> listTrainStationQuery(String trainId);
+
+    /**
+     * 查询两个站点之间的经过的线路
+     * @param trainId
+     * @param departure
+     * @param arrival
+     * @return
+     */
+    List<RouteDTO> listTakeoutTrainStationRoute(String trainId, String departure, String arrival);
+
 }

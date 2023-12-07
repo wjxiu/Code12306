@@ -17,7 +17,7 @@ import java.util.*;
  * @author xiu
  * @create 2023-11-20 19:24
  */
-@Component@Slf4j
+@Slf4j
 public class AbstractFilterChainsContext implements CommandLineRunner {
     private final ApplicationContext applicationContext;
 
@@ -26,7 +26,6 @@ public class AbstractFilterChainsContext implements CommandLineRunner {
     public AbstractFilterChainsContext(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
     }
-
     @Override
     public void run(String... args) throws Exception {
         Map<String, AbstractFilter> beans = applicationContext.getBeansOfType(AbstractFilter.class);

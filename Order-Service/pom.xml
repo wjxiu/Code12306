@@ -8,7 +8,6 @@
         <artifactId>Code12306</artifactId>
         <version>1.0</version>
     </parent>
-
     <artifactId>Order-Service</artifactId>
     <dependencies>
         <dependency>

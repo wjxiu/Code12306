@@ -1,8 +1,9 @@
 package org.wjx.dto.req;
 
 import lombok.Data;
-import org.wjx.purchase.DTO.PurchaseTicketPassengerDetailDTO;
+import org.wjx.handler.DTO.PurchaseTicketPassengerDetailDTO;
 
+import javax.validation.constraints.NotBlank;
 import java.util.List;
 
 /**
@@ -11,6 +12,7 @@ import java.util.List;
  */
 @Data
 public class PurchaseTicketReqDTO {
+    @NotBlank
     /**
      * 车次 ID
      */
@@ -29,10 +31,12 @@ public class PurchaseTicketReqDTO {
     /**
      * 出发站点
      */
+    @NotBlank
     private String departure;
 
     /**
      * 到达站点
      */
+    @NotBlank
     private String arrival;
 }

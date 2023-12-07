@@ -19,7 +19,7 @@ import org.wjx.dto.resp.PassengerActualRespDTO;
 import org.wjx.dto.resp.PassengerRespDTO;
 import org.wjx.enums.VerifyStatusEnum;
 import org.wjx.service.PassengerService;
-import org.wjx.toolkit.BeanUtil;
+import org.wjx.utils.BeanUtil;
 import org.wjx.user.core.UserContext;
 
 import java.util.Date;

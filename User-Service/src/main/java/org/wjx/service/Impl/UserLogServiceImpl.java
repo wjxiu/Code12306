@@ -25,8 +25,8 @@ import org.wjx.dto.resp.UserRegisterRespDTO;
 import org.wjx.filter.AbstractFilterChainsContext;
 import org.wjx.service.PassengerService;
 import org.wjx.service.UserLoginService;
-import org.wjx.toolkit.BeanUtil;
-import org.wjx.toolkit.JWTUtil;
+import org.wjx.utils.BeanUtil;
+import org.wjx.utils.JWTUtil;
 import org.wjx.user.core.UserContext;
 import org.wjx.user.core.UserInfoDTO;
 

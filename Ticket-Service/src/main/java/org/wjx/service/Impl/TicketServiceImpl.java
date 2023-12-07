@@ -2,15 +2,25 @@ package org.wjx.service.Impl;
 
 import cn.hutool.core.date.BetweenFormatter;
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.wjx.Exception.ClientException;
+import org.wjx.Exception.ServiceException;
+import org.wjx.Res;
 import org.wjx.common.TicketChainMarkEnum;
 import org.wjx.core.CacheLoader;
 import org.wjx.core.SafeCache;
@@ -23,14 +33,23 @@ import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.dto.req.RefundTicketReqDTO;
 import org.wjx.dto.req.TicketPageQueryReqDTO;
 import org.wjx.dto.resp.*;
+import org.wjx.enums.SourceEnum;
+import org.wjx.enums.TicketStatusEnum;
 import org.wjx.filter.AbstractFilterChainsContext;
+import org.wjx.handler.select.TrainSeatTypeSelector;
+import org.wjx.remote.TicketOrderRemoteService;
+import org.wjx.remote.dto.TicketOrderCreateRemoteReqDTO;
+import org.wjx.remote.dto.TicketOrderItemCreateRemoteReqDTO;
 import org.wjx.service.TicketService;
+import org.wjx.user.core.UserContext;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static org.wjx.constant.RedisKeyConstant.*;
 
 /**
  * @author xiu
@@ -39,16 +58,19 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class TicketServiceImpl implements TicketService {
+public class TicketServiceImpl extends ServiceImpl<TicketMapper,TicketDO> implements TicketService {
     final AbstractFilterChainsContext chainsContext;
     final SafeCache cache;
+    final RedissonClient redissonClient;
     final TrainStationRelationMapper trainStationRelationMapper;
     final TrainMapper trainMapper;
+     final TicketOrderRemoteService ticketOrderRemoteService;
     final TrainStationMapper trainStationMapper;
     final CarrageMapper carrageMapper;
     final TrainStationPriceMapper priceMapper;
     final RegionMapper regionMapper;
     final SeatMapper seatMapper;
+    final TrainSeatTypeSelector seatTypeSelector;
 
 
     /**
@@ -60,6 +82,12 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @SneakyThrows
     public TicketPageQueryRespDTO pageListTicketQueryV1(TicketPageQueryReqDTO requestParam) {
+        //大致流程:
+//        1.查询train_station_relation表,查出发地-目的地的列车id,
+//        2.根据列车id 查询carrage表,查出列车对应的座位类型
+//        3.根据出发地-目的地查询train_station,主要获得列车站台之间的顺序
+//        4根据站台顺序拼接二维数组(a-b-c-d-e :[[a,b],[a,c],[a,d],[a,e],[b-c]....])
+//        5.根据列车Id,二维数组座位type,三个for循环,遍历seat表查询座位的数量,保存缓存
         TicketPageQueryRespDTO ticketPageQueryRespDTO = gene(requestParam);
         List<TicketListDTO> gene = ticketPageQueryRespDTO.getTrainList();
         ticketPageQueryRespDTO.setTrainList(gene);
@@ -102,7 +130,7 @@ public class TicketServiceImpl implements TicketService {
      * 生成 TicketPageQueryRespDTO的 List<TicketListDTO> 和SeatClassTypeList
      *
      * @param requestParam 请求参数
-     * @return TicketPageQueryRespDTO的
+     * @return
      */
     private TicketPageQueryRespDTO gene(TicketPageQueryReqDTO requestParam) {
         String startregion = cache.SafeGetOfHash("ticket:sevice:code:trainName", requestParam.getFromStation(), String.class, () -> {
@@ -134,8 +162,7 @@ public class TicketServiceImpl implements TicketService {
         }
         List<Long> list1 = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
         String collect = list1.stream().map(String::valueOf).collect(Collectors.joining("-"));
-
-        String carriageDOString = cache.safeGet("ticket:sevice:train:carriage:" + collect, String.class, 15L, TimeUnit.DAYS, () -> {
+        String carriageDOString = cache.safeGet(TRAINCARRAGE + collect, String.class, 15L, TimeUnit.DAYS, () -> {
             return JSON.toJSONString(carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
                     .in(CarriageDO::getTrainId, list1)
                     .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount))
@@ -144,9 +171,7 @@ public class TicketServiceImpl implements TicketService {
 //        这里获取到座位信息
         List<CarriageDO> carriageDOS = JSON.parseArray(carriageDOString, CarriageDO.class);
         Map<String, Set<Integer>> trainToType = carriageDOS.stream()
-                .collect(Collectors.groupingBy(a -> a.getTrainId().toString(),
-                        Collectors.mapping(CarriageDO::getCarriageType, Collectors.toSet())));
-
+                .collect(Collectors.groupingBy(a -> a.getTrainId().toString(),Collectors.mapping(CarriageDO::getCarriageType, Collectors.toSet())));
         GeneCacheOfTicketForParchase(ticketListDTOS, trainToType);
 
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
@@ -177,20 +202,20 @@ public class TicketServiceImpl implements TicketService {
             String trainId = ticketListDTO.getTrainId();
 //           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
 //           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
-         String  trainStationDOSTring=   cache.safeGet("ticket-service:train:"+trainId,String.class,15L,TimeUnit.DAYS,()->{
+            String trainStationDOSTring = cache.safeGet("ticket-service:train:" + trainId, String.class, 15L, TimeUnit.DAYS, () -> {
                 return JSON.toJSONString(trainStationMapper.queryBytrainId(trainId));
             });
-            List<TrainStationDO> trainStationDOS =JSON.parseArray(trainStationDOSTring,TrainStationDO.class);
-            ArrayList<String[]> trainStationDOS1 = geneListOfCache(trainStationDOS);
-            for (String[] stationDOS : trainStationDOS1) {
+            List<TrainStationDO> trainStationDOS = JSON.parseArray(trainStationDOSTring, TrainStationDO.class);
+            ArrayList<String[]> startAndEndStation = geneListOfCache(trainStationDOS);
+            for (String[] stationDOS : startAndEndStation) {
                 String stratstation = stationDOS[0];
                 String endstation = stationDOS[1];
                 Set<Integer> types = trainToType.get(trainId);
                 for (Integer type : types) {
-                    Object o = hashOperations.get("ticket-service:train-station-price:" + String.join("-", trainId, stratstation, endstation), type.toString());
+                    Object o = hashOperations.get(REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation), type.toString());
                     if (o == null) {
                         Integer count = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratstation, endstation);
-                        hashOperations.put("ticket-service:train-station-price:" + String.join("-", trainId, stratstation, endstation), type.toString(), count.toString());
+                        hashOperations.put(REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation), type.toString(), count.toString());
                     }
                 }
             }
@@ -265,6 +290,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
     /**
+     * todo 跳过
      * 根据条件分页查询车票(高性能)
      *
      * @param requestParam 分页查询车票请求参数
@@ -275,26 +301,79 @@ public class TicketServiceImpl implements TicketService {
 //        通过职责链模式过滤参数
         chainsContext.execute(TicketChainMarkEnum.TRAIN_QUERY_FILTER.name(), requestParam);
         StringRedisTemplate instance = (StringRedisTemplate) cache.getInstance();
-        List<TicketListDTO> seatResults = getTicketListDTOS(instance, requestParam);
 
         return null;
     }
 
-    private List<TicketListDTO> getTicketListDTOS(StringRedisTemplate instance, TicketPageQueryReqDTO requestParam) {
-//todo
-        return null;
-    }
 
     /**
      * 购买车票v1
      *
      * @param requestParam 车票购买请求参数
-     * @return 订单好
+     * @return 订单号
      */
     @Override
     public TicketPurchaseRespDTO purchaseTicketsV1(PurchaseTicketReqDTO requestParam) {
-        return null;
+        String lockKey = String.format(String.format(LOCK_PURCHASE_TICKETS, requestParam.getTrainId()));
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean b = lock.tryLock();
+        if (!b)throw new ClientException("请重试");
+        try {
+            return executePurchaseTickets(requestParam);
+        }finally {
+            lock.unlock();
+        }
     }
+    @Transactional(rollbackFor = Throwable.class)
+    public TicketPurchaseRespDTO executePurchaseTickets(PurchaseTicketReqDTO requestParam) {
+        List<TicketOrderDetailRespDTO> ticketOrderDetailResults = new ArrayList<>();
+        String trainId = requestParam.getTrainId();
+        TrainDO trainDO = cache.safeGet(
+                "frame.redisticket-service:train:" + trainId,
+                TrainDO.class,
+                15L,
+                TimeUnit.DAYS, () -> trainMapper.selectById(trainId));
+        log.info("traindo-----------{}",trainDO);
+       List<TrainPurchaseTicketRespDTO> trainPurchaseTicketResults = seatTypeSelector.select(trainDO.getTrainType(), requestParam);
+        List<TicketDO> ticketDOList = trainPurchaseTicketResults.stream()
+                .map(each -> TicketDO.builder()
+                        .username(UserContext.getUserName())
+                        .trainId(Long.parseLong(requestParam.getTrainId()))
+                        .carriageNumber(each.getCarriageNumber())
+                        .seatNumber(each.getSeatNumber())
+                        .passengerId(each.getPassengerId())
+                        .ticketStatus(TicketStatusEnum.UNPAID.getCode())
+                        .build())
+                .toList();
+        saveBatch(ticketDOList);
+        Res<String> ticketOrderResult;
+        try {
+        List<TicketOrderItemCreateRemoteReqDTO> orderItemCreateRemoteReqDTOList = new ArrayList<>();
+        trainPurchaseTicketResults.forEach(each -> {
+            TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = buildTicketOrderItemCreateRemoteReqDTO(each);
+            TicketOrderDetailRespDTO ticketOrderDetailRespDTO = buildTicketOrderDetailRespDTO(each);
+            orderItemCreateRemoteReqDTOList.add(orderItemCreateRemoteReqDTO);
+            ticketOrderDetailResults.add(ticketOrderDetailRespDTO);
+        });
+        LambdaQueryWrapper<TrainStationRelationDO> queryWrapper = Wrappers.lambdaQuery(TrainStationRelationDO.class)
+                .eq(TrainStationRelationDO::getTrainId, trainId)
+                .eq(TrainStationRelationDO::getDeparture, requestParam.getDeparture())
+                .eq(TrainStationRelationDO::getArrival, requestParam.getArrival());
+        TrainStationRelationDO trainStationRelationDO = trainStationRelationMapper.selectOne(queryWrapper);
+        TicketOrderCreateRemoteReqDTO orderCreateRemoteReqDTO = buildTicketOrderCreateRemoteReqDTO(requestParam, trainDO, trainStationRelationDO, orderItemCreateRemoteReqDTOList);
+        ticketOrderResult = ticketOrderRemoteService.createTicketOrder(orderCreateRemoteReqDTO);
+        if (!ticketOrderResult.isSuccess() || StrUtil.isBlank(ticketOrderResult.getData())) {
+            log.error("订单服务调用失败，返回结果：{}", ticketOrderResult.getMessage());
+            throw new ServiceException("订单服务调用失败");
+        }
+    } catch (Throwable ex) {
+        log.error("远程调用订单服务创建错误，请求参数：{}", JSON.toJSONString(requestParam), ex);
+        throw ex;
+    }
+        return new TicketPurchaseRespDTO(ticketOrderResult.getData(), ticketOrderDetailResults);
+    }
+
+
 
     /**
      * 购买车票v2(高性能)
@@ -338,5 +417,56 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public RefundTicketRespDTO commonTicketRefund(RefundTicketReqDTO requestParam) {
         return null;
+    }
+
+
+    private static TicketOrderDetailRespDTO buildTicketOrderDetailRespDTO(TrainPurchaseTicketRespDTO each) {
+        TicketOrderDetailRespDTO ticketOrderDetailRespDTO = TicketOrderDetailRespDTO.builder()
+                .amount(each.getAmount())
+                .carriageNumber(each.getCarriageNumber())
+                .seatNumber(each.getSeatNumber())
+                .idCard(each.getIdCard())
+                .idType(each.getIdType())
+                .seatType(each.getSeatType())
+                .ticketType(each.getUserType())
+                .realName(each.getRealName())
+                .build();
+        return ticketOrderDetailRespDTO;
+    }
+
+    private static TicketOrderItemCreateRemoteReqDTO buildTicketOrderItemCreateRemoteReqDTO(TrainPurchaseTicketRespDTO each) {
+        TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = TicketOrderItemCreateRemoteReqDTO.builder()
+                .amount(each.getAmount())
+                .carriageNumber(each.getCarriageNumber())
+                .seatNumber(each.getSeatNumber())
+                .idCard(each.getIdCard())
+                .idType(each.getIdType())
+                .phone(each.getPhone())
+                .seatType(each.getSeatType())
+                .ticketType(each.getUserType())
+                .realName(each.getRealName())
+                .build();
+        return orderItemCreateRemoteReqDTO;
+    }
+
+    private static TicketOrderCreateRemoteReqDTO buildTicketOrderCreateRemoteReqDTO(PurchaseTicketReqDTO requestParam,
+                                                                                    TrainDO trainDO,
+                                                                                    TrainStationRelationDO trainStationRelationDO,
+                                                                                    List<TicketOrderItemCreateRemoteReqDTO> orderItemCreateRemoteReqDTOList) {
+        TicketOrderCreateRemoteReqDTO orderCreateRemoteReqDTO = TicketOrderCreateRemoteReqDTO.builder()
+                .departure(requestParam.getDeparture())
+                .arrival(requestParam.getArrival())
+                .orderTime(new Date())
+                .source(SourceEnum.INTERNET.getCode())
+                .trainNumber(trainDO.getTrainNumber())
+                .departureTime(trainStationRelationDO.getDepartureTime())
+                .arrivalTime(trainStationRelationDO.getArrivalTime())
+                .ridingDate(trainStationRelationDO.getDepartureTime())
+                .userId(UserContext.getUserId())
+                .username(UserContext.getUserName())
+                .trainId(Long.parseLong(requestParam.getTrainId()))
+                .ticketOrderItems(orderItemCreateRemoteReqDTOList)
+                .build();
+        return orderCreateRemoteReqDTO;
     }
 }
