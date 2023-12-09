@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.wjx.dao.DO.RouteDTO;
 import org.wjx.dao.DO.SeatDO;
@@ -22,7 +23,7 @@ import java.util.List;
  * @create 2023-11-30 9:42
  */
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor@Slf4j
 public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements SeatService  {
     final SeatMapper seatMapper;
     final TrainStationService trainStationService;
@@ -62,6 +63,7 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
     @Override
     public List<Integer> listSeatRemainingTicket(String trainId, String departure, String arrival, List<String> trainCarriageList) {
         SeatDO build = SeatDO.builder().trainId(Long.valueOf(trainId)).startStation(departure).endStation(arrival).build();
+        log.info("build::::{}",build);
        return   seatMapper.listSeatRemainingTicket(build,trainCarriageList);
     }
 
@@ -86,12 +88,13 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
                 .groupBy(SeatDO::getCarriageNumber)
                 .select(SeatDO::getCarriageNumber);
         List<SeatDO> seatDOList = list(queryWrapper);
+        log.info("seatDOList:::{}",seatDOList);
         return seatDOList.stream().map(SeatDO::getCarriageNumber).toList();
     }
 
     /**
      * 锁定选中以及沿途车票状态
-     *
+     *todo 有bug,锁定了全部统一等级的车票
      * @param trainId                     列车 ID
      * @param departure                   出发站
      * @param arrival                     到达站
@@ -99,7 +102,9 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
      */
     @Override
     public void lockSeat(String trainId, String departure, String arrival, List<TrainPurchaseTicketRespDTO> trainPurchaseTicketRespList) {
+        log.info("trainPurchaseTicketRespList:::{}",trainPurchaseTicketRespList);
         List<RouteDTO> routeDTOS = trainStationService.listTakeoutTrainStationRoute(trainId, departure, arrival);
+        log.info("routeDTOS::::{}",routeDTOS);
         for (RouteDTO routeDTO : routeDTOS) {
             for (TrainPurchaseTicketRespDTO ticket : trainPurchaseTicketRespList) {
                 LambdaUpdateWrapper<SeatDO> updateWrapper = Wrappers.lambdaUpdate(SeatDO.class)

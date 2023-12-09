@@ -4,6 +4,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.wjx.Res;
+import org.wjx.config.MyFeignClientConfiguration;
 import org.wjx.remote.dto.PassengerRespDTO;
 
 import java.util.List;
@@ -12,7 +13,7 @@ import java.util.List;
  * @author xiu
  * @create 2023-12-06 16:39
  */
-@FeignClient("user-service")
+@FeignClient(value = "user-service" ,configuration = MyFeignClientConfiguration.class)
 public interface UserRemoteService {
 
     @GetMapping("/passenger/inner/passenger/actual/query/ids")

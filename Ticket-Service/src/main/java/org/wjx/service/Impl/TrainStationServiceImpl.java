@@ -3,6 +3,7 @@ package org.wjx.service.Impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.wjx.dao.DO.RouteDTO;
 import org.wjx.dao.DO.TrainStationDO;
@@ -20,7 +21,7 @@ import java.util.List;
  * @author xiu
  * @create 2023-11-29 16:14
  */
-@Service
+@Service@Slf4j
 @RequiredArgsConstructor
 public class TrainStationServiceImpl implements TrainStationService {
     private final TrainStationMapper trainStationMapper;
@@ -47,10 +48,11 @@ public class TrainStationServiceImpl implements TrainStationService {
      */
     @Override
     public List<RouteDTO> listTakeoutTrainStationRoute(String trainId, String departure, String arrival) {
-        LambdaQueryWrapper<TrainStationDO> eq = new LambdaQueryWrapper<TrainStationDO>().eq(TrainStationDO::getTrainId, trainId).eq(TrainStationDO::getDeparture, departure)
-                .eq(TrainStationDO::getArrival, arrival).select(TrainStationDO::getDeparture,TrainStationDO::getSequence);
+        LambdaQueryWrapper<TrainStationDO> eq = new LambdaQueryWrapper<TrainStationDO>().eq(TrainStationDO::getTrainId, trainId)
+                .select(TrainStationDO::getDeparture,TrainStationDO::getSequence);
         List<TrainStationDO> trainStationDOS = trainStationMapper.selectList(eq);
         List<String> list = trainStationDOS.stream().sorted(Comparator.comparing(TrainStationDO::getSequence)).map(TrainStationDO::getDeparture).toList();
+        log.info("列车线路查询结果:{}",list);
         return StationCalculateUtil.calculateDeepStation(list, departure, arrival);
     }
 }

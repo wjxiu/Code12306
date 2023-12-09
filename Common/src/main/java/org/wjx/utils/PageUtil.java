@@ -43,10 +43,20 @@ public class PageUtil {
         return buildConventionPage(iPage);
     }
 
-
-    public static <RESP, ORIGINAL> PageResponse<RESP> convert(IPage<ORIGINAL> iPage, Class<RESP> targetClass, Function <? super ORIGINAL,? super RESP>  f) {
+    /**
+     *
+     *转换前执行函数表达式f，唯一一个参数表示被转换的每一个元素
+     * {@link IPage} to {@link PageResponse}
+     * @param iPage
+     * @param respClass
+     * @param f
+     * @return PageResponse<RESP>
+     * @param <RESP> 转换后的class
+     * @param <ORIGINAL> 未转换的class
+     */
+    public static <RESP, ORIGINAL> PageResponse<RESP> convert(IPage<ORIGINAL> iPage, Class<RESP> respClass, Function <? super ORIGINAL,? super RESP>  f) {
         List<? super RESP> list = iPage.getRecords().stream().map(f).toList();
-        List<RESP> targets = BeanUtil.convertToList(list, targetClass);
+        List<RESP> targets = BeanUtil.convertToList(list, respClass);
        return   PageResponse.<RESP>builder()
                 .current(iPage.getCurrent())
                 .size(iPage.getSize())

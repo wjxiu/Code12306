@@ -45,12 +45,14 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
         Integer seatType = requestParam.getSeatType();
         String departure = purchaserequestParam.getDeparture();
         String arrival = purchaserequestParam.getArrival();
+        log.info("requestParam:::{}",requestParam);
 //        可用的车厢
         List<String> availableCarrage = seatService.listAvailableCarriageNumber(trainId,
                 seatType,
                 departure,
                 arrival);
 //     对应车厢的可用座位的车票
+        log.info("availableCarrage:::::{}",availableCarrage);
         List<Integer> seatRemainingTicket = seatService.listSeatRemainingTicket(trainId, departure, arrival, availableCarrage);
         int totalticketcount = seatRemainingTicket.stream().mapToInt(Integer::intValue).sum();
         if (totalticketcount < purchaserequestParam.getPassengers().size()) {
@@ -221,9 +223,9 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
                 List<String> selectSeats = new ArrayList<>();
                 for (int[] ints : entry.getValue()) {
                     if (ints[0] <= 9) {
-                        selectSeats.add("0" + ints[0] + SeatNumberUtil.convert(2, ints[1]+1));
+                        selectSeats.add("0" +(ints[0]+1 + SeatNumberUtil.convert(2, ints[1]+1)));
                     } else {
-                        selectSeats.add("" + ints[0] + SeatNumberUtil.convert(2, ints[1]+1));
+                        selectSeats.add(ints[0] + SeatNumberUtil.convert(2, ints[1]+1));
                     }
                 }
 //                按照顺序分配,没有座位要求

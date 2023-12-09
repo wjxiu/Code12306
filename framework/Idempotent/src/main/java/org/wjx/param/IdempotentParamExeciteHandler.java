@@ -74,14 +74,14 @@ public class IdempotentParamExeciteHandler extends AbstractIdempotentExecuteHand
     }
 
     private String  caclMD5(ProceedingJoinPoint joinPoint) {
+        if(joinPoint.getArgs().length==0) throw new IllegalArgumentException("禁止参数为空");
         String string = Arrays.toString(joinPoint.getArgs());
         return  DigestUtils.md5DigestAsHex(string.getBytes());
     }
     private String getCurrentUserId() {
         String userId = UserContext.getUserId();
-        if(!StringUtils.hasLength(userId)){
-            throw new ClientException("用户ID获取失败，请登录");
-        }
+        if(!StringUtils.hasLength(userId)) return "";
+//        if(!StringUtils.hasLength(userId)) throw new ClientException("用户ID获取失败，请登录");
         return userId;
     }
     private String getpath(){

@@ -35,6 +35,7 @@ public class FeignRequestInterceptor implements RequestInterceptor {
             //将请求的头信息放入到RequestTemplate 的头信息中，当使用RequestTemplate发起请求时会自动添加头信息
             while (iterator.hasNext()) {
                 Map.Entry<String, String> entry = iterator.next();
+                if (entry.getKey().equals("content-length"))continue;
                 template.header(entry.getKey(), entry.getValue());
             }
             // 微服务之间传递的唯一标识,区分大小写所以通过httpServletRequest获取

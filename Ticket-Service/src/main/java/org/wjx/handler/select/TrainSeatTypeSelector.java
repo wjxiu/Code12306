@@ -40,7 +40,9 @@ import java.util.stream.Collectors;
  * @author xiu
  * @create 2023-12-06 13:13
  */
-@RequiredArgsConstructor@Component@Slf4j
+@RequiredArgsConstructor
+@Component
+@Slf4j
 public class TrainSeatTypeSelector {
     final AbstractStrategyChoose abstractStrategyChoose;
     final UserRemoteService userRemoteService;
@@ -96,6 +98,7 @@ public class TrainSeatTypeSelector {
             TrainStationPriceDO trainStationPriceDO = trainStationPriceMapper.selectOne(eq);
             each.setAmount(trainStationPriceDO.getPrice());
         });
+        log.info("actrualRes:{}",actrualRes);
         seatService.lockSeat(requestParam.getTrainId(), requestParam.getDeparture(), requestParam.getArrival(), actrualRes);
         return actrualRes;
     }
@@ -115,7 +118,6 @@ public class TrainSeatTypeSelector {
                                                              PurchaseTicketReqDTO requestParam,
                                                              List<PurchaseTicketPassengerDetailDTO> passengerSeatDetails) {
         String buildingkey= VehicleTypeEnum.findCNameByCode(trainType)+ VehicleSeatTypeEnum.findCNameByCode(seatType);
-        log.info("building-----------{}",buildingkey);
         SelectSeatDTO build = SelectSeatDTO.builder()
                 .seatType(seatType)
                 .requestParam(requestParam)

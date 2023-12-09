@@ -3,8 +3,7 @@ package org.wjx.dto.req;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.wjx.base.PageRequest;
-
+import org.wjx.page.PageRequest;
 import javax.validation.constraints.NotBlank;
 import java.util.Date;
 

@@ -58,7 +58,6 @@ public class UserLogServiceImpl extends ServiceImpl<UserMapper, UserDO> implemen
         login.setAccessToken(token);
 //        todo 放入缓存中或者theadlocal中
         UserContext.set(build);
-
         return login;
     }
 

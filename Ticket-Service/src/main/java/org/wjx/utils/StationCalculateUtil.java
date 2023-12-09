@@ -1,5 +1,6 @@
 package org.wjx.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.wjx.Exception.ClientException;
 import org.wjx.dao.DO.RouteDTO;
 
@@ -14,6 +15,7 @@ import java.util.Objects;
  * @author xiu
  * @create 2023-12-06 10:40
  */
+@Slf4j
 public class StationCalculateUtil {
 
     /**
@@ -56,6 +58,7 @@ public class StationCalculateUtil {
                 routeDTOS.add(new RouteDTO(stations.get(i), stations.get(j)));
             }
         }
+        log.info("转换结果:{}",routeDTOS);
         return routeDTOS;
     }
 

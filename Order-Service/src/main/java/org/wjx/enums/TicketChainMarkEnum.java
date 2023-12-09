@@ -1,4 +1,4 @@
-package org.wjx.common;
+package org.wjx.enums;
 
 /**
  * 车票相关的职责链名字枚举

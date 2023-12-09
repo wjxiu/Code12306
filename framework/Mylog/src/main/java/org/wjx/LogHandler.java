@@ -34,25 +34,38 @@ public class LogHandler {
         String className = targetClass.getSimpleName();
         Method declaredMethod = targetClass.getDeclaredMethod(name, methodSignature.getMethod().getParameterTypes());
         MyLog logAnnotation = Optional.ofNullable(declaredMethod.getAnnotation(MyLog.class)).orElse(targetClass.getAnnotation(MyLog.class));
-        Object proceed;
+        Object proceed = null;
         long start = System.currentTimeMillis();
         try {
             proceed = joinPoint.proceed();
-        } finally {
-            if (logAnnotation!=null){
-                Long duration = System.currentTimeMillis() - start;
-                ServletRequestAttributes servletRequestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-                assert servletRequestAttributes != null;
-                HttpServletRequest request = servletRequestAttributes.getRequest();
-                String requestURI = request.getRequestURI();
-                Map<String, Object> paramKV = buildInput(joinPoint);
-                String requestType = request.getMethod();
-                log.info("方法:{} | 请求类型:{} | url:{} | 耗时:{}ms | 参数列表:[{}] | 参数详情:{}",
-                        className+"#"+name, requestType,requestURI,duration, buildParamNames(methodSignature),sortParam(methodSignature,paramKV));
-            }
+        }catch (Exception e){
+//            doLog(joinPoint, logAnnotation, start, className, name, methodSignature);
+            throw e;
+        }finally {
+            doLog(joinPoint, logAnnotation, start, className, name, methodSignature);
         }
         return proceed;
     }
+
+    private void doLog(ProceedingJoinPoint joinPoint, MyLog logAnnotation, long start, String className, String name, MethodSignature methodSignature) {
+        if (logAnnotation !=null){
+            Long duration = System.currentTimeMillis() - start;
+            ServletRequestAttributes servletRequestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            assert servletRequestAttributes != null;
+            HttpServletRequest request = servletRequestAttributes.getRequest();
+            String requestURI = request.getRequestURI();
+            Map<String, Object> paramKV = buildInput(joinPoint);
+            String requestType = request.getMethod();
+            log.info("方法: {} | 请求类型: {} | url: {} | 耗时: {}ms | 参数列表:[{}] | 参数详情:{}",
+                    className +"#"+ name,
+                    requestType,
+                    requestURI,
+                    duration,
+                    buildParamNames(methodSignature),
+                    sortParam(methodSignature,paramKV));
+        }
+    }
+
     //    生成kv，未排序的
     private Map<String, Object> buildInput(ProceedingJoinPoint joinPoint) {
         long start = System.currentTimeMillis();

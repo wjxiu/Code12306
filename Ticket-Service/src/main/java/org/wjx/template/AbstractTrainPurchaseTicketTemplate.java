@@ -53,7 +53,7 @@ public abstract class AbstractTrainPurchaseTicketTemplate implements IPurchase, 
             routeDTOS.forEach(b -> {
                 String startStation = b.getStartStation();
                 String endStation = b.getEndStation();
-                hashOperations.increment(REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, startStation, endStation), seatType, -selectSeatDTO.getPassengerSeatDetails().size());
+                hashOperations.increment(REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, startStation, endStation), seatType+"", -selectSeatDTO.getPassengerSeatDetails().size());
             });
         });
         return trainPurchaseTicketRespDTOS;

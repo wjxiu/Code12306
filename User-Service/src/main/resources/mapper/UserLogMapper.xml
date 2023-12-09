@@ -4,10 +4,10 @@
         select id as user_id ,username,real_name
         from t_user
         <where>
-            <if test="usernameOrMailOrPhone!='' or usernameOrMailOrPhone!=null ">
-                (username=#{usernameOrMailOrPhone} or mail=#{usernameOrMailOrPhone} or phone=#{usernameOrMailOrPhone})
+            <if test="reqDTO.usernameOrMailOrPhone!='' or reqDTO.usernameOrMailOrPhone!=null ">
+                (username=#{reqDTO.usernameOrMailOrPhone} or mail=#{reqDTO.usernameOrMailOrPhone} or phone=#{reqDTO.usernameOrMailOrPhone})
             </if>
-            and password=#{password} and del_flag=0
+            and password=#{reqDTO.password} and del_flag=0
         </where>
     </select>
 </mapper>

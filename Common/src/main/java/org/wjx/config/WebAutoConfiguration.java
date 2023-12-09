@@ -1,10 +1,10 @@
 package org.wjx.config;
 
-import feign.RequestInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.wjx.Exception.ExceptionHandler.GlobalExceptionHandler;
@@ -17,9 +17,9 @@ import org.wjx.filter.TokenInterceptor;
  */
 @Configuration
 @RequiredArgsConstructor
+@Import({MyFeignClientConfiguration.class})
 public class WebAutoConfiguration  implements WebMvcConfigurer {
     final TokenInterceptor tokenInterceptor;
-    final FeignRequestInterceptor feignRequestInterceptor;
     @Bean
     @ConditionalOnMissingBean
     public GlobalExceptionHandler globalExceptionHandler() {

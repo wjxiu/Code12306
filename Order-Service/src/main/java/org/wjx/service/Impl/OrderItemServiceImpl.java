@@ -6,6 +6,7 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -28,7 +29,7 @@ import java.util.List;
  * @create 2023-12-07 12:47
  */
 @Service@RequiredArgsConstructor
-public class OrderItemServiceImpl implements OrderItemService {
+public class OrderItemServiceImpl extends ServiceImpl<OrderItemMapper, OrderItemDO> implements OrderItemService  {
     final OrderItemMapper orderItemMapper;
     final OrderMapper orderMapper;
     final RedissonClient redissonClient;
@@ -42,8 +43,7 @@ public class OrderItemServiceImpl implements OrderItemService {
         LambdaQueryWrapper<OrderItemDO> in = new LambdaQueryWrapper<OrderItemDO>().eq(OrderItemDO::getOrderSn, requestParam.getOrderSn())
                 .in(OrderItemDO::getId,requestParam.getOrderItemRecordIds());
         List<OrderItemDO> orderItemDOS = orderItemMapper.selectList(in);
-        List<TicketOrderPassengerDetailRespDTO> ticketOrderPassengerDetailRespDTOS = BeanUtil.convertToList(orderItemDOS, TicketOrderPassengerDetailRespDTO.class);
-        return null;
+        return  BeanUtil.convertToList(orderItemDOS, TicketOrderPassengerDetailRespDTO.class);
     }
 
     /**
