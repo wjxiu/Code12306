@@ -3,6 +3,7 @@ package org.wjx.template;
 import Strategy.AbstractExecuteStrategy;
 import Strategy.IPurchase;
 import cn.hutool.core.collection.CollUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.data.redis.core.HashOperations;
@@ -22,7 +23,7 @@ import static org.wjx.constant.RedisKeyConstant.REMAINTICKETOFSEAT_TRAIN;
  * @author xiu
  * @create 2023-12-05 18:28
  */
-
+@Slf4j
 public abstract class AbstractTrainPurchaseTicketTemplate implements IPurchase, CommandLineRunner, AbstractExecuteStrategy<SelectSeatDTO, List<TrainPurchaseTicketRespDTO>> {
     SafeCache cache;
     TrainStationService trainStationService;
@@ -44,6 +45,7 @@ public abstract class AbstractTrainPurchaseTicketTemplate implements IPurchase, 
     public List<TrainPurchaseTicketRespDTO> executeResp(SelectSeatDTO selectSeatDTO) {
         HashOperations hashOperations = cache.getInstance().opsForHash();
         List<TrainPurchaseTicketRespDTO> trainPurchaseTicketRespDTOS = selectSeat(selectSeatDTO);
+        log.info("trainPurchaseTicketRespDTOS:::{}",trainPurchaseTicketRespDTOS);
         trainPurchaseTicketRespDTOS.forEach(a -> {
             String trainId = selectSeatDTO.getRequestParam().getTrainId();
             String departure = selectSeatDTO.getRequestParam().getDeparture();

@@ -167,8 +167,10 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
             if (remainticketeachcarriage < passNum) continue;
             List<String> seats = seatService.listAvailableSeat(trainId, carragenum, seatType, departure, arrival);
             int[][] PlaneMapOfSeats = get2DMapOfSeats(seats);
+            log.info("二维地图:::{}",PlaneMapOfSeats);
             //选择的座位
             int[][] seletedSeats = SeatSelection.adjacent(PlaneMapOfSeats, passNum);
+            log.info("选择的座位::{}",seletedSeats);
 //            匹配了,退出选择座位过程
             if (seletedSeats != null) {
                 carriagesNumberSeatsMap.put(carragenum,seletedSeats);
