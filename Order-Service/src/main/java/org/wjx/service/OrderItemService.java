@@ -27,5 +27,4 @@ public interface OrderItemService extends IService<OrderItemDO> {
      */
     void orderItemStatusReversal(OrderItemStatusReversalDTO requestParam);
 
-
 }

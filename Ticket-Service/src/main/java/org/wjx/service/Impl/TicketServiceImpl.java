@@ -5,6 +5,7 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -38,10 +39,12 @@ import org.wjx.enums.TicketStatusEnum;
 import org.wjx.filter.AbstractFilterChainsContext;
 import org.wjx.handler.select.TrainSeatTypeSelector;
 import org.wjx.remote.TicketOrderRemoteService;
+import org.wjx.remote.dto.ResetSeatDTO;
 import org.wjx.remote.dto.TicketOrderCreateRemoteReqDTO;
 import org.wjx.remote.dto.TicketOrderItemCreateRemoteReqDTO;
 import org.wjx.service.TicketService;
 import org.wjx.user.core.UserContext;
+import org.wjx.utils.BeanUtil;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -418,6 +421,25 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     @Override
     public RefundTicketRespDTO commonTicketRefund(RefundTicketReqDTO requestParam) {
         return null;
+    }
+
+    /**
+     *设置订单关联的座位状态为0
+     * @param dto
+     * @return
+     */
+    @Override
+    public Boolean ResetSeatStatus(List<ResetSeatDTO> dto) {
+        for (ResetSeatDTO resetSeatDTO : dto) {
+            SeatDO convert = BeanUtil.convert(resetSeatDTO, SeatDO.class);
+            convert.setSeatStatus(0);
+            int update = seatMapper.update(convert, new LambdaQueryWrapper<SeatDO>()
+                    .eq(SeatDO::getSeatNumber, resetSeatDTO.getSeatNumber())
+                    .eq(SeatDO::getTrainId, resetSeatDTO.getTrainId())
+                    .eq(SeatDO::getSeatType, resetSeatDTO.getSeatType()));
+            if (update<1)return false;
+        }
+        return true;
     }
 
 

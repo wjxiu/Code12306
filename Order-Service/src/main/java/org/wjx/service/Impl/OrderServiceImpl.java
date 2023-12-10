@@ -98,6 +98,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public PageResponse<TicketOrderDetailRespDTO> pageTicketOrder(TicketOrderPageQueryReqDTO requestParam) {
+        log.info("TicketOrderPageQueryReqDTO:{}",requestParam.toString());
         LambdaQueryWrapper<OrderDO> queryWrapper = Wrappers.lambdaQuery(OrderDO.class)
                 .eq(OrderDO::getUserId, requestParam.getUserId())
                 .in(OrderDO::getStatus, buildOrderStatusList(requestParam))
@@ -138,7 +139,7 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 15分钟
      */
-    private static final int delaytime = 15 * 60 * 1000;
+    private static final int delaytime = 1 * 2 * 1000;
 
     /**
      * 创建火车票订单
@@ -258,6 +259,7 @@ public class OrderServiceImpl implements OrderService {
 
     private List<Integer> buildOrderStatusList(TicketOrderPageQueryReqDTO requestParam) {
         List<Integer> result = new ArrayList<>();
+        log.info("requestParam::{}",requestParam.toString());
         switch (requestParam.getStatusType()) {
             case 0 -> result = ListUtil.of(
                     OrderStatusEnum.PENDING_PAYMENT.getStatus()

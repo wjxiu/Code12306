@@ -8,6 +8,7 @@ import org.wjx.dto.resp.PayInfoRespDTO;
 import org.wjx.dto.resp.RefundTicketRespDTO;
 import org.wjx.dto.resp.TicketPageQueryRespDTO;
 import org.wjx.dto.resp.TicketPurchaseRespDTO;
+import org.wjx.remote.dto.ResetSeatDTO;
 
 import javax.validation.constraints.NotBlank;
 import java.util.ArrayList;
@@ -60,4 +61,7 @@ public interface TicketService {
      * @return 退款返回详情
      */
     RefundTicketRespDTO commonTicketRefund(RefundTicketReqDTO requestParam);
+
+
+    Boolean ResetSeatStatus(List<ResetSeatDTO> dto);
 }

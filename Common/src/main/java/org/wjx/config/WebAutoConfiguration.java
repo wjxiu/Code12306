@@ -30,5 +30,8 @@ public class WebAutoConfiguration  implements WebMvcConfigurer {
         registry.addInterceptor(tokenInterceptor);
     }
 
-
+    @Bean
+    public FeignRequestInterceptor feignRequestInterceptor(){
+        return new FeignRequestInterceptor();
+    }
 }

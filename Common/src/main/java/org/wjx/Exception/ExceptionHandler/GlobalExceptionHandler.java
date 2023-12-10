@@ -49,10 +49,11 @@ public class GlobalExceptionHandler {
         }
         return "unknown";
     }
+
     @ExceptionHandler(value = Throwable.class)
     public Res defaultErrorHandler(HttpServletRequest request, Throwable throwable) {
         log.error("[{}] {} ", request.getMethod(), getUrl(request), throwable);
-        return Res.failure();
+        return Res.failure(throwable.getMessage(),"400");
     }
     private String getUrl(HttpServletRequest request) {
         if (StringUtils.isEmpty(request.getQueryString())) {

@@ -13,6 +13,7 @@ import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.dto.req.RefundTicketReqDTO;
 import org.wjx.dto.req.TicketPageQueryReqDTO;
 import org.wjx.dto.resp.*;
+import org.wjx.remote.dto.ResetSeatDTO;
 import org.wjx.service.TicketService;
 import org.wjx.utils.BeanUtil;
 
@@ -59,14 +60,19 @@ public class TicketController {
     /**
      * 公共退款接口
      */
-    @PostMapping("/api/ticket-service/ticket/refund")
+    @PostMapping("/refund")
     public Res<RefundTicketRespDTO> commonTicketRefund(@Validated @RequestBody RefundTicketReqDTO requestParam) {
         return Res.success(ticketService.commonTicketRefund(requestParam));
     }
+    @PostMapping("/ResetSeatStatus")
+    public Res<Boolean> ResetSeatStatus(@Validated @RequestBody List<ResetSeatDTO> list) {
+        return Res.success(ticketService.ResetSeatStatus(list));
+    }
+
     /**
      * 根据列车 ID 查询站点信息
      */
-    @GetMapping("/api/ticket-service/train-station/query")
+    @GetMapping("/train-station/query")
     public Res<List<TrainStationQueryRespDTO>> listTrainStationQuery(String trainId) {
         List<TrainStationDO> trainStationDOS = trainStationMapper.selectList(new LambdaQueryWrapper<TrainStationDO>().eq(TrainStationDO::getStationId, trainId));
         List<TrainStationQueryRespDTO> trainStationQueryRespDTOS = BeanUtil.convertToList(trainStationDOS, TrainStationQueryRespDTO.class);

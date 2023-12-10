@@ -53,7 +53,7 @@ public class TicketOrderController {
      * 分页查询车票订单
      */
     @GetMapping("/api/order-service/order/ticket/page")
-    public Res<PageResponse<TicketOrderDetailRespDTO>> pageTicketOrder(TicketOrderPageQueryReqDTO requestParam) {
+    public Res<PageResponse<TicketOrderDetailRespDTO>> pageTicketOrder(@RequestBody TicketOrderPageQueryReqDTO requestParam) {
         return Res.success(orderService.pageTicketOrder(requestParam));
     }
 
@@ -61,7 +61,7 @@ public class TicketOrderController {
      * 分页查询本人车票订单
      */
     @GetMapping("/api/order-service/order/ticket/self/page")
-    public Res<PageResponse<TicketOrderDetailSelfRespDTO>> pageSelfTicketOrder(PageRequest requestParam) {
+    public Res<PageResponse<TicketOrderDetailSelfRespDTO>> pageSelfTicketOrder(@RequestBody PageRequest requestParam) {
         return Res.success(orderService.pageSelfTicketOrder(requestParam));
     }
     /**
