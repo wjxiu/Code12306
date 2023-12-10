@@ -43,6 +43,7 @@ import org.wjx.remote.dto.ResetSeatDTO;
 import org.wjx.remote.dto.TicketOrderCreateRemoteReqDTO;
 import org.wjx.remote.dto.TicketOrderItemCreateRemoteReqDTO;
 import org.wjx.service.TicketService;
+import org.wjx.user.core.ApplicationContextHolder;
 import org.wjx.user.core.UserContext;
 import org.wjx.utils.BeanUtil;
 
@@ -349,13 +350,14 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                         .ticketStatus(TicketStatusEnum.UNPAID.getCode())
                         .build())
                 .toList();
-        saveBatch(ticketDOList);
+        TicketServiceImpl bean = ApplicationContextHolder.getBean(TicketServiceImpl.class);
+        bean.saveBatch(ticketDOList);
         Res<String> ticketOrderResult;
         try {
             List<TicketOrderItemCreateRemoteReqDTO> orderItemCreateRemoteReqDTOList = new ArrayList<>();
             trainPurchaseTicketResults.forEach(each -> {
-                TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = buildTicketOrderItemCreateRemoteReqDTO(each);
-                TicketOrderDetailRespDTO ticketOrderDetailRespDTO = buildTicketOrderDetailRespDTO(each);
+                TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = bean.buildTicketOrderItemCreateRemoteReqDTO(each);
+                TicketOrderDetailRespDTO ticketOrderDetailRespDTO = bean.buildTicketOrderDetailRespDTO(each);
                 orderItemCreateRemoteReqDTOList.add(orderItemCreateRemoteReqDTO);
                 ticketOrderDetailResults.add(ticketOrderDetailRespDTO);
             });
@@ -364,7 +366,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                     .eq(TrainStationRelationDO::getDeparture, requestParam.getDeparture())
                     .eq(TrainStationRelationDO::getArrival, requestParam.getArrival());
             TrainStationRelationDO trainStationRelationDO = trainStationRelationMapper.selectOne(queryWrapper);
-            TicketOrderCreateRemoteReqDTO orderCreateRemoteReqDTO = buildTicketOrderCreateRemoteReqDTO(requestParam, trainDO,
+            TicketOrderCreateRemoteReqDTO orderCreateRemoteReqDTO = bean.buildTicketOrderCreateRemoteReqDTO(requestParam, trainDO,
                     trainStationRelationDO, orderItemCreateRemoteReqDTOList);
             ticketOrderResult = ticketOrderRemoteService.createTicketOrder(orderCreateRemoteReqDTO);
             if (!ticketOrderResult.isSuccess() || StrUtil.isBlank(ticketOrderResult.getData())) {
