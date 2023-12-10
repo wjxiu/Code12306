@@ -107,11 +107,15 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
         log.info("routeDTOS::::{}",routeDTOS);
         for (RouteDTO routeDTO : routeDTOS) {
             for (TrainPurchaseTicketRespDTO ticket : trainPurchaseTicketRespList) {
+                log.info("ticket::{}",ticket);
                 LambdaUpdateWrapper<SeatDO> updateWrapper = Wrappers.lambdaUpdate(SeatDO.class)
                         .eq(SeatDO::getTrainId,trainId)
                         .eq(SeatDO::getSeatType,ticket.getSeatType())
                         .eq(SeatDO::getStartStation,routeDTO.getStartStation())
-                        .eq(SeatDO::getEndStation,routeDTO.getEndStation());
+                        .eq(SeatDO::getEndStation,routeDTO.getEndStation())
+                        .eq(SeatDO::getCarriageNumber,ticket.getCarriageNumber())
+                        .eq(SeatDO::getSeatNumber,ticket.getSeatNumber())
+                        .eq(SeatDO::getSeatStatus,0);
                 SeatDO updateSeatDO = SeatDO.builder()
                         .seatStatus(SeatStatusEnum.LOCKED.getCode())
                         .build();
