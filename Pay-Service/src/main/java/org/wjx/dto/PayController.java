@@ -2,9 +2,7 @@ package org.wjx.dto;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.wjx.PayInfoRespDTO;
 import org.wjx.Res;
 import org.wjx.Service.PayService;
@@ -17,6 +15,19 @@ import org.wjx.Service.PayService;
 @RequiredArgsConstructor
 public class PayController {
     final PayService payService;
+
+
+    /**
+     * 公共支付接口
+     * 对接常用支付方式，比如：支付宝、微信以及银行卡等
+     */
+    @PostMapping("/api/pay-service/pay/create")
+    public Res<PayRespDTO> pay(@RequestBody PayCommand requestParam) {
+        PayRequest payRequest = PayRequestConvert.command2PayRequest(requestParam);
+        PayRespDTO result = payService.commonPay(payRequest);
+        return Res.success(result);
+    }
+
 
     /**
      * 跟据订单号查询支付单详情
@@ -33,14 +44,5 @@ public class PayController {
     @GetMapping("/api/pay-service/pay/query/pay-sn")
     public Res<PayInfoRespDTO> getPayInfoByPaySn(@RequestParam(value = "paySn") String paySn) {
         return Res.success(payService.getPayInfoByPaySn(paySn));
-    }
-}
-class a{
-    @Transactional
-    public void show(){
-        hhh();
-    }
-    public void hhh(){
-
     }
 }

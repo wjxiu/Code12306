@@ -1,0 +1,26 @@
+package org.wjx.handler;
+
+/**
+ * @author xiu
+ * @create 2023-12-11 10:24
+ */
+public class AliPayConf {
+ public  static String appid="9021000126601611";
+ public  static String pid= "2088721009694895";
+ public  static String gateWayURL="https://openapi-sandbox.dl.alipaydev.com/gateway.do";
+ public  static String privateKey="MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCJ7EqFdUwuQSr/94x5HvNXtBir/pjGi6t9y0Fk8HU8Cws3QweSk4tie4mRwomk6ZQRZxKbyhKitgMldNCxOilVqvlgjDZbP6AL9WhYP5pvqJ3UYkpJiaaGM65sftvsl0drOUbebwHu0RlsObG0LxBG7T5uHdCzehALMCRE01VrOqyLlgvZoiZulmu7uGKo6Lu78IWJFiFcCnknxPYghhOugu1oxuZdwr9k9RUgBwlwHZ5Mz5hsi+n75KGyqYQaSDZDZkJh/UPsS1vknloScnZ9x987qLtYFB36PqTuNgcGdmog6YivF9aCMWAcx4i6zD5Ze7ptMm+MRtB6GDzvZtk9AgMBAAECggEAAetX3iOTu9EMWCOJwOW9XSsUbNBOL/Uhnc6GSnFOMFe3AD3ejRughO5TK8QZRkI53UQh7ikRuVHvGUZW4SB+EsMeVUmeOAbao0/288Nu0r71806q2fsgZh2x/7CEPvab99IEOnQxArHGOMtUvb0p7NLAW6fuj5DTSFSTLKIEPkm9gXCkGH/HHuzCdI179y/Mra3TEwVAx6uSkXoEKzjjU9ASgePgpwCSrt9+TmPAF2bNBHMl6m9XQJ2Y59z7O2M3e28yTQKxnmnao8jQI4VSqPt/q3TkgfVObBeD94C3cyUH3LtXrMWg0F4XMavsF6nU0fkBDo6hwiv+nieoImsaAQKBgQDCB/h3q4aHCdyUdR2yZTqjgL/LgHzLtz4TMCqiYgmTpCVkqfxlj1jEgaSDYyoB4kJZqq11xAPC2AIcRPddh8jqsPNWLh9p0ZO9KUS7evNH+P9zDmp3zaqP3hXQf8sr2D2TlPKtIDZ4AZUl49N6ab8J+HlunHXFI9qIpooKNHGPiQKBgQC1+OhgNgDILb3x2tTt1JaNtf8cmnjUQwPpCobHC6nRzwZtPz6Pt50n9KsvhmQxVgbwohY+SL2S8R65ylvy0c9U7uPWz6hXjETMTpdlPCOfRmwrWN/1REoCfUy+QDDDo/tcyfEhI9kQd+9wLxidB4d0bxfm4soM/UOjSw6tqBW7FQKBgF1aDl4tJUVVJk465rXM5GCD8kMLp38vw2rh8rE7r9Xb1K3Q5wFJ7XBl22vnSu+rFzci2d/eFd0ppiJJwCW8zZq01e5xtGVqEsWg1FPLPL80+lo15l2LkvMy65Xr1ilbGY0mzXckF3C3ejXHnhi4RdSbOnlQR404ycyTK7jrMHPZAoGBAI1jleJTc24WJHTL7A/S0xvOoiauW13JqDslA62agVtUuRCfSFPQfdpyv6PQjv7Kcd/8gL3qNOn8UTxYX/MeVDMQ3pSkio9jnH0GP5nYDXGO/TL8/h6K7dpbUwqrw3fvbLoe6i0utlSWa8NFxKEWHYg5XV/3LLjE/A3fnssNQ701AoGBAIKs6qIoNB5XPlr+w5OBeOyByFBOm1UYPJEYqiLv6/wUSsYISF8UZlgFxK8WZJ6a6/p+qobvUmmetRuCB3M6hR3/WXqBZqsijKfyJv2U1DGyWb6ykjWR0XD5FJYr+terWkVJhE/gCc6/0WPq72kKK9Kq9BmaoIyVbh8Oj5Y8akF9";
+ public  static String publicKey="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvYGWpF/x/rTws1/rnBkC8dl6RUa/CMLsIlJQgft49UdOyliaDKzUMcdYgwPkguexuzt89Gb6htUSsw6MfskbOySy98sQwv/AdIr0W6UF/Tj6B22W1NeNDhylMnZnADbNw2VS+4hPcTzmki6GIjoLhrdKF2OnUliqquIQ50qKdc6b5Wv4PfUa3Z015sc3gZteuf+mTz03Vn36moeVfGa1DT6AELHAXOISQ/vgADBZEUr6Ps03fs3sZZdhPLpTgPwUgCxwfaoR+u3ui9IC2y7H5UuLbLt8dvAWpBnHALQFonTP5bigeFlsa0MX2sVUp0LkrXQiOZ0C96qpMi6yEPZKWQIDAQAB";
+ public static String BUYER_ID = "2088722009617419";
+ // 服务器异步通知页面路径  需http://格式的完整路径，不能加?id=123这类自定义参数，必须外网可以正常访问
+ public static String notify_url = "http://notify.frp.wjx.lat";
+
+ // 页面跳转同步通知页面路径 需http://格式的完整路径，不能加?id=123这类自定义参数，必须外网可以正常访问
+ public static String return_url = "http://return.frp.wjx.lat/";
+
+ // 签名方式
+ public static String sign_type = "RSA2";
+
+ // 字符编码格式
+ public static String charset = "utf-8";
+
+}
