@@ -145,7 +145,17 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
         return getTrainPurchaseTicketRespDTOS(passengerSeatDetails, carriagesNumberSeatsMap);
     }
 
-    //用户没有选择座位,随机安排
+    /**
+     * 为没有选择座位的用户分配座位，
+     * 三级尝试
+     * 1. 尝试全部人分配同一车厢相邻座位
+     * 2. 尝试分配全部人在同一个车厢
+     * 3. 尝试分配不同车厢不相邻
+     * @param requestParam
+     * @param availableCarrage
+     * @param trainStationCarriageRemainingTicket
+     * @return
+     */
     private List<TrainPurchaseTicketRespDTO> selectSeatsWithoutChose(SelectSeatDTO requestParam,
                                                                      List<String> availableCarrage,
                                                                      List<Integer> trainStationCarriageRemainingTicket) {
@@ -256,7 +266,7 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
                 if (j <= 9) {
                     actualSeats[j - 1][k - 1] = listAvailableSeat.contains("0" + j + SeatNumberUtil.convert(2, k)) ? 0 : 1;
                 } else {
-                    actualSeats[j - 1][k - 1] = listAvailableSeat.contains("" + j + SeatNumberUtil.convert(2, k)) ? 0 : 1;
+                    actualSeats[j - 1][k - 1] = listAvailableSeat.contains( j + SeatNumberUtil.convert(2, k)) ? 0 : 1;
                 }
             }
         }

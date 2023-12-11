@@ -51,6 +51,8 @@ public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseT
             for (Map.Entry<Integer, List<PurchaseTicketPassengerDetailDTO>> entry : TypeToList.entrySet()) {
                 Integer key = entry.getKey();
                 List<PurchaseTicketPassengerDetailDTO> passengers = entry.getValue();
+                Object o = hashOperations.get(REMAINTICKETOFSEAT_TRAIN + keySuffix, key);
+                log.info(o.toString());
                 Integer count =(Integer) hashOperations.get(REMAINTICKETOFSEAT_TRAIN+keySuffix, key);
                 log.info("缓存的座位数目:{}",count);
                 if (count==null){
@@ -61,7 +63,7 @@ public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseT
                         Integer seatType = passenger.getSeatType();
                         Integer seatCount = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, seatType, departure, arrival);
                         log.info("座位信息:::{}---{}",seatType,seatCount);
-                        hashOperations.put(REMAINTICKETOFSEAT_TRAIN+keySuffix,seatCount,seatCount);
+                        hashOperations.put(REMAINTICKETOFSEAT_TRAIN+keySuffix,seatType,seatCount);
                     }
                 }
                 if (count<passengers.size())throw new ClientException("无余票");
