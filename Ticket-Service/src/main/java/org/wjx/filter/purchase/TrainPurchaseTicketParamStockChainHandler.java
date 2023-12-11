@@ -3,6 +3,7 @@ package org.wjx.filter.purchase;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -25,7 +26,7 @@ import static org.wjx.constant.RedisKeyConstant.REMAINTICKETOFSEAT_TRAIN;
  * @author xiu
  * @create 2023-12-04 19:44
  */
-@Component
+@Component@Slf4j
 @RequiredArgsConstructor
 public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseTicketChainFilter<PurchaseTicketReqDTO>{
     final SafeCache cache;
@@ -51,12 +52,15 @@ public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseT
                 Integer key = entry.getKey();
                 List<PurchaseTicketPassengerDetailDTO> passengers = entry.getValue();
                 Integer count =(Integer) hashOperations.get(REMAINTICKETOFSEAT_TRAIN+keySuffix, key);
+                log.info("缓存的座位数目:{}",count);
                 if (count==null){
 //                    这里没有保存到座位数量信息,需要查询
 //                    根据train_id,seat_type,起点,终点查询座位数量
+                    log.info("查询数据库");
                     for (PurchaseTicketPassengerDetailDTO passenger : passengers) {
                         Integer seatType = passenger.getSeatType();
                         Integer seatCount = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, seatType, departure, arrival);
+                        log.info("座位信息:::{}---{}",seatType,seatCount);
                         hashOperations.put(REMAINTICKETOFSEAT_TRAIN+keySuffix,seatCount,seatCount);
                     }
                 }

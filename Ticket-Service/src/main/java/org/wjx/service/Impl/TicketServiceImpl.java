@@ -75,6 +75,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     final RegionMapper regionMapper;
     final SeatMapper seatMapper;
     final TrainSeatTypeSelector seatTypeSelector;
+    final AbstractFilterChainsContext filterChainsContext;
 
 
     /**
@@ -318,6 +319,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      */
     @Override
     public TicketPurchaseRespDTO purchaseTicketsV1(PurchaseTicketReqDTO requestParam) {
+//        先过滤
+        chainsContext.execute("TrainPurchaseTicketChainFilter",requestParam);
         String lockKey = String.format(String.format(LOCK_PURCHASE_TICKETS, requestParam.getTrainId()));
         RLock lock = redissonClient.getLock(lockKey);
         boolean b = lock.tryLock();

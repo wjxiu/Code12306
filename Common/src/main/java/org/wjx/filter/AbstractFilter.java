@@ -13,7 +13,7 @@ public interface AbstractFilter<T> extends Ordered {
      * 定义过滤逻辑
      * @param reqParam 被过滤的数据
      */
-    void handle(T reqParam);
+    void  handle(T reqParam);
 
     /**
      * 设置过滤器的名字,相同名字的被认为是同一组过滤器

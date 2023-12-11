@@ -224,10 +224,10 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
 //               给每个车厢被选中的座位生成01A这样的代号
                 List<String> selectSeats = new ArrayList<>();
                 for (int[] ints : entry.getValue()) {
-                    if (ints[0] <= 9) {
+                    if (ints[0] < 9) {
                         selectSeats.add("0" +(ints[0]+1 + SeatNumberUtil.convert(2, ints[1]+1)));
                     } else {
-                        selectSeats.add(ints[0] + SeatNumberUtil.convert(2, ints[1]+1));
+                        selectSeats.add(ints[0]+1 + SeatNumberUtil.convert(2, ints[1]+1));
                     }
                 }
 //                按照顺序分配,没有座位要求
