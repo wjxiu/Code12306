@@ -26,13 +26,14 @@ import java.util.*;
  * @create 2023-11-30 10:48
  */
 @Component
-@RequiredArgsConstructor@Slf4j
+@RequiredArgsConstructor
+@Slf4j
 public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchaseTicketTemplate {
     final SeatService seatService;
 
     @Override
     public String mark() {
-        return VehicleTypeEnum.HIGH_SPEED_RAIN.getName()+ VehicleSeatTypeEnum.SECOND_CLASS.getName();
+        return VehicleTypeEnum.HIGH_SPEED_RAIN.getName() + VehicleSeatTypeEnum.SECOND_CLASS.getName();
     }
 
     /**
@@ -45,14 +46,14 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
         Integer seatType = requestParam.getSeatType();
         String departure = purchaserequestParam.getDeparture();
         String arrival = purchaserequestParam.getArrival();
-        log.info("requestParam:::{}",requestParam);
+        log.info("requestParam:::{}", requestParam);
 //        可用的车厢
         List<String> availableCarrage = seatService.listAvailableCarriageNumber(trainId,
                 seatType,
                 departure,
                 arrival);
 //     对应车厢的可用座位的车票
-        log.info("availableCarrage:::::{}",availableCarrage);
+        log.info("availableCarrage:::::{}", availableCarrage);
         List<Integer> seatRemainingTicket = seatService.listSeatRemainingTicket(trainId, departure, arrival, availableCarrage);
         int totalticketcount = seatRemainingTicket.stream().mapToInt(Integer::intValue).sum();
         if (totalticketcount < purchaserequestParam.getPassengers().size()) {
@@ -159,7 +160,7 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
         Map<String, int[][]> carriagesNumberSeatsMap = new HashMap<>();
 //        保存着分配后的地图
         Map<String, int[][]> actualSeatsMap = new HashMap<>();
-//        保存每个车厢的剩余座位个数
+//        保存每个车厢的剩余座位个数,key->carriagenum,value->对应车厢座位数目
         Map<String, Integer> demotionStockNumMap = new LinkedHashMap<>();
         for (int i = 0; i < availableCarrage.size(); i++) {
             String carragenum = availableCarrage.get(i);
@@ -167,13 +168,13 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
             if (remainticketeachcarriage < passNum) continue;
             List<String> seats = seatService.listAvailableSeat(trainId, carragenum, seatType, departure, arrival);
             int[][] PlaneMapOfSeats = get2DMapOfSeats(seats);
-            log.info("二维地图:::{}",PlaneMapOfSeats);
-            //选择的座位
+            log.info("二维地图:::{}", PlaneMapOfSeats);
+            //选择的座位，第一级尝试分配相邻座位
             int[][] seletedSeats = SeatSelection.adjacent(PlaneMapOfSeats, passNum);
-            log.info("选择的座位::{}",seletedSeats);
+            log.info("选择的座位::{}", seletedSeats);
 //            匹配了,退出选择座位过程
-            if (seletedSeats != null) {
-                carriagesNumberSeatsMap.put(carragenum,seletedSeats);
+            if (seletedSeats != null && seletedSeats.length == passNum) {
+                carriagesNumberSeatsMap.put(carragenum, seletedSeats);
                 break;
             }
 //            如果当前车厢没有匹配的话,保存 车厢号->分配的座位
@@ -185,29 +186,30 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
             if (i < availableCarrage.size() - 1) {
                 continue;
             }
-//            如果每个车厢都同一车厢连续座位匹配失败
+//           如果每个车厢都同一车厢连续座位匹配失败
+//          第二级：尝试同一个车厢不同位置
             for (Map.Entry<String, Integer> entry : demotionStockNumMap.entrySet()) {
-//              尝试  同一个车厢不邻座匹配
-                String carriagesNumberBack = entry.getKey();
-                int demotionStockNumBack = entry.getValue();
-                if (demotionStockNumBack > passNum) {
-                    int[][] actualseats = actualSeatsMap.get(carriagesNumberBack);
-                    int[][] selectSeat = SeatSelection.nonAdjacent(actualseats, passNum);
-                    if (selectSeat.length == passNum) {
-                        carriagesNumberSeatsMap.put(carriagesNumberBack, selectSeat);
-                        break;
-                    }
+                String carriageNum = entry.getKey();
+                Integer remianSeatNum = entry.getValue();
+//                跳过座位数小于人数的车厢
+                if (remianSeatNum > passNum) continue;
+                int[][] map = actualSeatsMap.get(carriageNum);
+                int[][] selectSeat = SeatSelection.nonAdjacent(map, passNum);
+                if (selectSeat.length == passNum) {
+                    carriagesNumberSeatsMap.put(carragenum, seletedSeats);
+                    break;
                 }
             }
-            if (seats == null) {
-                for (Map.Entry<String, Integer> entry : demotionStockNumMap.entrySet()) {
-//              尝试  同一个车厢不邻座匹配
-                    String carriagesNumberBack = entry.getKey();
-                    int demotionStockNumBack = entry.getValue();
-                    int[][] actualseats = actualSeatsMap.get(carriagesNumberBack);
-                    int[][] selectSeat = SeatSelection.nonAdjacent(actualseats, demotionStockNumBack);
-                    carriagesNumberSeatsMap.put(carriagesNumberBack, selectSeat);
-                }
+//         第二级成功，退出循环
+            if (!carriagesNumberSeatsMap.isEmpty()) break;
+//            第三级匹配：不同车厢不同座
+            for (Map.Entry<String, Integer> entry : demotionStockNumMap.entrySet()) {
+                String carriageNum = entry.getKey();
+                int remianSeatNum = entry.getValue();
+                if (remianSeatNum > passNum) continue;
+                int[][] actualseats = actualSeatsMap.get(carriageNum);
+                int[][] selectSeat = SeatSelection.nonAdjacent(actualseats, passNum);
+                carriagesNumberSeatsMap.put(carriageNum, selectSeat);
             }
         }
         return getTrainPurchaseTicketRespDTOS(passengerSeatDetails, carriagesNumberSeatsMap);
@@ -225,9 +227,9 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
                 List<String> selectSeats = new ArrayList<>();
                 for (int[] ints : entry.getValue()) {
                     if (ints[0] < 9) {
-                        selectSeats.add("0" +(ints[0]+1 + SeatNumberUtil.convert(2, ints[1]+1)));
+                        selectSeats.add("0" + (ints[0] + 1 + SeatNumberUtil.convert(2, ints[1] + 1)));
                     } else {
-                        selectSeats.add(ints[0]+1 + SeatNumberUtil.convert(2, ints[1]+1));
+                        selectSeats.add(ints[0] + 1 + SeatNumberUtil.convert(2, ints[1] + 1));
                     }
                 }
 //                按照顺序分配,没有座位要求
@@ -260,8 +262,6 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
         }
         return actualSeats;
     }
-
-
 
 
 }
