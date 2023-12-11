@@ -338,8 +338,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 TrainDO.class,
                 15L,
                 TimeUnit.DAYS, () -> trainMapper.selectById(trainId));
-        log.info("traindo-----------{}", trainDO);
+//        选出座位
         List<TrainPurchaseTicketRespDTO> trainPurchaseTicketResults = seatTypeSelector.select(trainDO.getTrainType(), requestParam);
+//        生成车票
         List<TicketDO> ticketDOList = trainPurchaseTicketResults.stream()
                 .map(each -> TicketDO.builder()
                         .username(UserContext.getUserName())
@@ -351,6 +352,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                         .build())
                 .toList();
         TicketServiceImpl bean = ApplicationContextHolder.getBean(TicketServiceImpl.class);
+//        保存车票
         bean.saveBatch(ticketDOList);
         Res<String> ticketOrderResult;
         try {

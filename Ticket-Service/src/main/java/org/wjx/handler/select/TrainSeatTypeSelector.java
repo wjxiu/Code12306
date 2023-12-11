@@ -51,8 +51,10 @@ public class TrainSeatTypeSelector {
     public List<TrainPurchaseTicketRespDTO> select(Integer trainType, PurchaseTicketReqDTO requestParam) {
         String trainId = requestParam.getTrainId();
         List<TrainPurchaseTicketRespDTO> actrualRes=new CopyOnWriteArrayList<>();
+//        map,key: 座位类型,value:购票细节
         Map<Integer, List<PurchaseTicketPassengerDetailDTO>> seatTypeMap = requestParam.getPassengers().stream().collect(Collectors.groupingBy(PurchaseTicketPassengerDetailDTO::getSeatType));
         List<String> chooseSeats = requestParam.getChooseSeats();
+//        如果人数大于1,使用线程池加快购票方法
         if (chooseSeats.size()>1){
             List<Future<List<TrainPurchaseTicketRespDTO>>> futureResults = new ArrayList<>();
 //            通过线程池调用distributeSeats来进行购票
@@ -72,6 +74,7 @@ public class TrainSeatTypeSelector {
             });
         }else{
             seatTypeMap.forEach((seatType,list)->{
+//                真正执行购票的算法
                 actrualRes.addAll(distributeSeats(trainType, seatType, requestParam, list));
             });
         }
@@ -81,6 +84,7 @@ public class TrainSeatTypeSelector {
         List<String> list = requestParam.getPassengers().stream().map(a->a.getPassengerId()).toList();
 //        远程查询乘车人的信息
         Res<List<PassengerRespDTO>> passengerList = userRemoteService.listPassengerQueryByIds(UserContext.getUserName(), list);
+//            查出每个座位的价钱
         actrualRes.forEach(each ->{
             PassengerRespDTO passengerRespDTO = passengerList.getData().stream().filter(pass -> Objects.equals(pass.getId(), each.getPassengerId())).findFirst().get();
             each.setIdType(passengerRespDTO.getIdType());
@@ -99,13 +103,14 @@ public class TrainSeatTypeSelector {
             each.setAmount(trainStationPriceDO.getPrice());
         });
         log.info("actrualRes:{}",actrualRes);
+//        设置座位为锁定状态
         seatService.lockSeat(requestParam.getTrainId(), requestParam.getDeparture(), requestParam.getArrival(), actrualRes);
         return actrualRes;
     }
 
 
     /**
-     * 根据参数调用不同的策略
+     * 通过策略方法根据参数调用不同的策略
      *来进行购票
      * @param trainType
      * @param seatType
