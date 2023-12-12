@@ -113,17 +113,18 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             String arrival = ticketListDTO.getArrival();
             String trainId = ticketListDTO.getTrainId();
             for (SeatClassDTO seatClassDTO : ticketListDTO.getSeatClassList()) {
-                String trainStationPriceDOString = cache.SafeGetOfHash(TRAIN_PRICE_HASH +
-                        String.join("-", trainId,departure, arrival ), seatClassDTO.getType().toString(), String.class, (CacheLoader<String>) () -> {
-                    TrainStationPriceDO trainStationPriceDO = priceMapper.selectOne(new LambdaQueryWrapper<TrainStationPriceDO>()
-                            .eq(TrainStationPriceDO::getDeparture, departure)
-                            .eq(TrainStationPriceDO::getArrival, arrival)
-                            .eq(TrainStationPriceDO::getTrainId, trainId)
-                            .eq(TrainStationPriceDO::getSeatType, seatClassDTO.getType())
-                            .select(TrainStationPriceDO::getPrice));
-                    return trainStationPriceDO.getPrice().toString();
-                });
-                Long price = JSON.parseObject(trainStationPriceDOString, Long.class);
+                Integer price = cache.SafeGetOfHash(TRAIN_PRICE_HASH +
+                                String.join("-", trainId, departure, arrival),
+                        seatClassDTO.getType(),
+                        () -> {
+                            TrainStationPriceDO trainStationPriceDO = priceMapper.selectOne(new LambdaQueryWrapper<TrainStationPriceDO>()
+                                    .eq(TrainStationPriceDO::getDeparture, departure)
+                                    .eq(TrainStationPriceDO::getArrival, arrival)
+                                    .eq(TrainStationPriceDO::getTrainId, trainId)
+                                    .eq(TrainStationPriceDO::getSeatType, seatClassDTO.getType())
+                                    .select(TrainStationPriceDO::getPrice));
+                            return trainStationPriceDO.getPrice();
+                        });
                 BigDecimal bigDecimal = new BigDecimal(price / 100).setScale(2, RoundingMode.HALF_UP);
                 seatClassDTO.setPrice(bigDecimal);
             }
@@ -137,11 +138,11 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * @return
      */
     private TicketPageQueryRespDTO gene(TicketPageQueryReqDTO requestParam) {
-        String startregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getFromStation(), String.class, () -> {
+        String startregion=  cache.SafeGetOfHash(CODE_TRAIN_NAME,requestParam.getFromStation(),() -> {
             return regionMapper.selectRegionNameByCode(requestParam.getFromStation());
         });
-        String endregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getToStation(), String.class, () -> {
-            return regionMapper.selectRegionNameByCode(requestParam.getToStation());
+        String endregion =  cache.SafeGetOfHash(CODE_TRAIN_NAME,requestParam.getDeparture(),() -> {
+            return regionMapper.selectRegionNameByCode(requestParam.getDeparture());
         });
         TicketPageQueryRespDTO ticketPageQueryRespDTO = new TicketPageQueryRespDTO();
         HashSet<Integer> typeClassSetRes = new HashSet<>();
@@ -158,18 +159,27 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
             ticketListDTO.setTrainId(tstationDO.getTrainId().toString());
-            TrainDO trainDO=  cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), TrainDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-                 return trainMapper.selectById(ticketListDTO.getTrainId());
-             });
+            TrainDO trainDO = cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), TrainDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+                return trainMapper.selectById(ticketListDTO.getTrainId());
+            });
             sb.append(trainDO.getTrainBrand()).append(",");
             trainDoToTicketListDTO(ticketListDTO, tstationDO, trainDO);
         }
-        List<Long> list1 = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
-        String collect = list1.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
+        List<Long> trainIds = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
+        String collect = trainIds.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
+
+        for (Long trainId : trainIds) {
+            cache.safeGetForList(TRAINCARRAGE + collect, CarriageDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+                return carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
+                        .eq(CarriageDO::getTrainId, trainId)
+                        .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount));
+            });
+        }
+        //todo 改成单独保存每一个列车的每一个车厢的信息
 //        这里获取到座位信息
         List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, CarriageDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
             return carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
-                    .in(CarriageDO::getTrainId, list1)
+                    .in(CarriageDO::getTrainId, trainIds)
                     .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount));
         });
         Map<String, Set<Integer>> trainToType = carriageDOS.stream()
@@ -199,7 +209,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * 三个for循环保存 列车id-开始车站-结束车站,field:seatType value seatcount
      */
     private void GeneCacheOfTicketForParchase(ArrayList<TicketListDTO> ticketListDTOS, Map<String, Set<Integer>> trainToType) {
-        HashOperations<String,Integer,Integer> hashOperations = cache.getInstance().opsForHash();
+        HashOperations<String, Integer, Integer> hashOperations = cache.getInstance().opsForHash();
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             String trainId = ticketListDTO.getTrainId();
 //           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
@@ -317,7 +327,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     @Override
     public TicketPurchaseRespDTO purchaseTicketsV1(PurchaseTicketReqDTO requestParam) {
 //        先过滤
-        chainsContext.execute("TrainPurchaseTicketChainFilter",requestParam);
+        chainsContext.execute("TrainPurchaseTicketChainFilter", requestParam);
         String lockKey = String.format(String.format(LOCK_PURCHASE_TICKETS, requestParam.getTrainId()));
         RLock lock = redissonClient.getLock(lockKey);
         boolean b = lock.tryLock();
@@ -428,7 +438,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     }
 
     /**
-     *设置订单关联的座位状态为0
+     * 设置订单关联的座位状态为0
+     *
      * @param dto
      * @return
      */
@@ -441,7 +452,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                     .eq(SeatDO::getSeatNumber, resetSeatDTO.getSeatNumber())
                     .eq(SeatDO::getTrainId, resetSeatDTO.getTrainId())
                     .eq(SeatDO::getSeatType, resetSeatDTO.getSeatType()));
-            if (update<1)return false;
+            if (update < 1) return false;
         }
         return true;
     }

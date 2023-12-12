@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -47,32 +48,30 @@ public class StringRedisTemplateProxy implements SafeCache {
         put(key, value, redisproperties.timeOut, redisproperties.timeUnit);
     }
 
-    public void putOfHash(String key, String hashkey, Object value) {
-        if (value instanceof String) {
-            redisTemplate.opsForHash().put(key, hashkey, value);
-        } else {
-            redisTemplate.opsForHash().put(key, hashkey, JSON.toJSONString(value));
-        }
+    public <HK, HV> void putOfHash(String key, HK hashkey, HV value) {
+        HashOperations<String, HK, HV> hashOperations = getInstance().opsForHash();
+        hashOperations.put(key, hashkey, value);
     }
 
-    public <T> T SafeGetOfHash(String key, String hashkey, Class<T> clazz, CacheLoader<T> loader) {
-        T res = (T) redisTemplate.opsForHash().get(key, hashkey);
-        if (res != null) return res;
+    public <HK, HV> HV SafeGetOfHash(String key, HK hashkey, CacheLoader<HV> loader) {
+        HashOperations<String, HK, HV> hashOperations = getInstance().opsForHash();
+        HV hv = hashOperations.get(key, hashkey);
+        if (hv != null) return hv;
         RLock lock = redissonClient.getLock(KEYPREFIX + key + ":" + hashkey);
         boolean b = lock.tryLock();
         try {
             if (b) {
-                res = (T) redisTemplate.opsForHash().get(key, hashkey);
-                if (res != null) return res;
-                res = loader.load();
-                putOfHash(key, hashkey, res);
+                hv = hashOperations.get(key, hashkey);
+                if (hv != null) return hv;
+                hv = loader.load();
+                hashOperations.put(key, hashkey, hv);
             }
         } finally {
             if (lock != null) {
                 lock.unlock();
             }
         }
-        if (res != null) return res;
+        if (hv != null) return hv;
         else throw new ServiceException("加载缓存失败");
     }
 
@@ -173,7 +172,7 @@ public class StringRedisTemplateProxy implements SafeCache {
                 if (range != null && !range.isEmpty()) return range;
                 range = cacheLoader.load();
                 Long l = listOperations.leftPushAll(key, range);
-                getInstance().expire(key,timeout,timeUnit);
+                getInstance().expire(key, timeout, timeUnit);
                 if (l != range.size()) throw new ServiceException("缓存列表出错");
             }
         } finally {

@@ -21,10 +21,7 @@ public interface Cache {
      * 放入缓存
      */
     void put(@NotBlank String key, Object value);
-
-
-    public <T> T SafeGetOfHash(String key, String hashkey, Class<T> clazz,CacheLoader<T> loader);
-
+    public <HK, HV> HV SafeGetOfHash(String key, HK hashkey, CacheLoader<HV> loader);
         /**
          * 如果 keys 全部不存在，则新增，返回 true，反之 false
          */
