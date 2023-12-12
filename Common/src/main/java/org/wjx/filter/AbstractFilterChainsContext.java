@@ -44,7 +44,6 @@ public class AbstractFilterChainsContext implements CommandLineRunner {
         log.info("{}",map);
     }
     public <T> void execute(String chainName,T  req){
-
         if (!StringUtils.hasLength(chainName))return;
         List<AbstractFilter> abstractFilters = map.get(chainName);
         if (abstractFilters==null||abstractFilters.isEmpty())throw new NullPointerException(String.format("[%s] Chain of Responsibility ID is undefined.", chainName));

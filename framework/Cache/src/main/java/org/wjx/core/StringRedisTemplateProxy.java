@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.wjx.Exception.ServiceException;
@@ -14,6 +15,7 @@ import org.wjx.utils.FastJson2Util;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -156,6 +158,22 @@ public class StringRedisTemplateProxy implements SafeCache {
     @Override
     public <T> T safeGet(String key, Class<T> clazz, long timeout, TimeUnit timeUnit, CacheLoader<T> cacheLoader) {
         return safeGet(key, clazz, timeout, timeUnit, cacheLoader, null, null);
+    }
+
+    public  <T> List<T>  safeGetForList(String key, Class<T> clazz, long timeout, TimeUnit timeUnit, CacheLoader<List<T>> cacheLoader) {
+        ListOperations<String,T> listOperations = getInstance().opsForList();
+        List<T> range = listOperations.range( key, 0, -1);
+        if (range!=null&&!range.isEmpty())return range;
+        RLock lock = redissonClient.getLock(KEYPREFIX + key);
+        boolean b = lock.tryLock();
+        if (b){
+             range = listOperations.range( key, 0, -1);
+            if (range!=null&&!range.isEmpty())return range;
+            range= cacheLoader.load();
+            Long l = listOperations.leftPushAll(key, range);
+            if (l!=range.size())throw new ServiceException("缓存列表出错");
+        }
+        return range;
     }
 
     @Override

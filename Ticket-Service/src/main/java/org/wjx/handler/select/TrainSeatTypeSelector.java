@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.wjx.Exception.ServiceException;
 import org.wjx.Res;
+import org.wjx.core.SafeCache;
 import org.wjx.dao.DO.TrainStationPriceDO;
 import org.wjx.dao.mapper.TrainStationMapper;
 import org.wjx.dao.mapper.TrainStationPriceMapper;
@@ -27,11 +28,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
+
+import static org.wjx.constant.RedisKeyConstant.USER_PASSENGER_LIST;
 
 /**
  * todo 暂时未知
@@ -48,6 +48,7 @@ public class TrainSeatTypeSelector {
     final UserRemoteService userRemoteService;
     final TrainStationPriceMapper trainStationPriceMapper;
     final SeatService seatService;
+    final SafeCache cache;
     public List<TrainPurchaseTicketRespDTO> select(Integer trainType, PurchaseTicketReqDTO requestParam) {
         String trainId = requestParam.getTrainId();
         List<TrainPurchaseTicketRespDTO> actrualRes=new CopyOnWriteArrayList<>();
@@ -81,7 +82,8 @@ public class TrainSeatTypeSelector {
         if (CollUtil.isEmpty(actrualRes)){
             throw new ServiceException("余票不足");
         }
-        List<String> list = requestParam.getPassengers().stream().map(a->a.getPassengerId()).toList();
+        List<String> list = requestParam.getPassengers().stream().map(PurchaseTicketPassengerDetailDTO::getPassengerId).toList();
+
 //        远程查询乘车人的信息
         Res<List<PassengerRespDTO>> passengerList = userRemoteService.listPassengerQueryByIds(UserContext.getUserName(), list);
 //            查出每个座位的价钱

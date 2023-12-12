@@ -11,6 +11,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.wjx.Exception.ClientException;
 import org.wjx.Exception.ServiceException;
+import org.wjx.core.SafeCache;
 import org.wjx.dao.entity.PassengerDO;
 import org.wjx.dao.mapper.PassengerMapper;
 import org.wjx.dto.req.PassengerRemoveReqDTO;
@@ -22,8 +23,12 @@ import org.wjx.service.PassengerService;
 import org.wjx.utils.BeanUtil;
 import org.wjx.user.core.UserContext;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.wjx.constant.RedisKeyConstant.USER_PASSENGER_LIST;
 
 /**
  * todo 缓存结果
@@ -37,6 +42,7 @@ import java.util.List;
 public class PassengerServiceImpl implements PassengerService {
     final PassengerMapper passengerMapper;
     final PlatformTransactionManager transactionManager;
+    final SafeCache cache;
 
 
     @Override
@@ -48,10 +54,12 @@ public class PassengerServiceImpl implements PassengerService {
 
     @Override
     public List<PassengerActualRespDTO> listPassengerQueryByIds(String username, List<Long> ids) {
-        LambdaQueryWrapper<PassengerDO> queryWrapper = Wrappers.lambdaQuery(PassengerDO.class)
-                .eq(PassengerDO::getUsername, username).in(PassengerDO::getId, ids);
-        List<PassengerDO> passengerDOS = passengerMapper.selectList(queryWrapper);
-        return BeanUtil.convertToList(passengerDOS, PassengerActualRespDTO.class);
+        ArrayList<PassengerActualRespDTO> res = new ArrayList<>();
+        List<PassengerDO> list = cache.safeGetForList(USER_PASSENGER_LIST + UserContext.getUserName(), PassengerDO.class, 30L, TimeUnit.DAYS, () -> {
+            LambdaQueryWrapper<PassengerDO> queryWrapper = Wrappers.lambdaQuery(PassengerDO.class).eq(PassengerDO::getUsername, username);
+            return passengerMapper.selectList(queryWrapper);
+        });
+       return  list.stream().filter(a-> ids.contains(a.getId())).map(a-> BeanUtil.convert(a,PassengerActualRespDTO.class)).toList();
     }
 
     @Override

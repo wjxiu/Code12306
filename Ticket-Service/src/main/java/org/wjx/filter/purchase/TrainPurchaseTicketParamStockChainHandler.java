@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.wjx.Exception.ClientException;
@@ -46,16 +47,13 @@ public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseT
             List<PurchaseTicketPassengerDetailDTO> passengerDetails = requestParam.getPassengers();
             Map<Integer, List<PurchaseTicketPassengerDetailDTO>> TypeToList = passengerDetails.stream().collect(Collectors.groupingBy(PurchaseTicketPassengerDetailDTO::getSeatType));
             String keySuffix = StrUtil.join("-", requestParam.getTrainId(), departure, arrival);
-            StringRedisTemplate stringRedisTemplate = (StringRedisTemplate) cache.getInstance();
-            HashOperations hashOperations = stringRedisTemplate.opsForHash();
+            RedisTemplate instance = cache.getInstance();
+            HashOperations<String,Integer,Integer> hashOperations = instance.opsForHash();
             for (Map.Entry<Integer, List<PurchaseTicketPassengerDetailDTO>> entry : TypeToList.entrySet()) {
                 Integer key = entry.getKey();
                 List<PurchaseTicketPassengerDetailDTO> passengers = entry.getValue();
-                Object o = hashOperations.get(REMAINTICKETOFSEAT_TRAIN + keySuffix, key);
-                log.info(o.toString());
-                Integer count =(Integer) hashOperations.get(REMAINTICKETOFSEAT_TRAIN+keySuffix, key);
-                log.info("缓存的座位数目:{}",count);
-                if (count==null){
+                Integer s = hashOperations.get(REMAINTICKETOFSEAT_TRAIN+keySuffix, key);
+                if (s==null){
 //                    这里没有保存到座位数量信息,需要查询
 //                    根据train_id,seat_type,起点,终点查询座位数量
                     log.info("查询数据库");
@@ -63,19 +61,21 @@ public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseT
                         Integer seatType = passenger.getSeatType();
                         Integer seatCount = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, seatType, departure, arrival);
                         log.info("座位信息:::{}---{}",seatType,seatCount);
-                        hashOperations.put(REMAINTICKETOFSEAT_TRAIN+keySuffix,seatType,seatCount);
+                        hashOperations.put(REMAINTICKETOFSEAT_TRAIN+keySuffix,seatType, seatCount);
+                        if (seatCount <passengers.size())throw new ClientException("无余票");
                     }
                 }
-                if (count<passengers.size())throw new ClientException("无余票");
             }
         }
     }
+
+//    public void  GetSeatNumFromDB()
 
     /**
      * @return
      */
     @Override
     public int getOrder() {
-        return 0;
+        return 1;
     }
 }

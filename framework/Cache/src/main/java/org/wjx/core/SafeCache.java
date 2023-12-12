@@ -5,6 +5,8 @@ import org.redisson.api.RBloomFilter;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -94,6 +96,17 @@ public interface SafeCache extends Cache{
     <T> T safeGet(@NotBlank String key, Class<T> clazz,long timeout, TimeUnit timeUnit, CacheLoader<T> cacheLoader);
 
 
+    /**
+     * 生成针对list的缓存
+     * @param key
+     * @param clazz
+     * @param timeout
+     * @param timeUnit
+     * @param cacheLoader
+     * @return
+     * @param <T>
+     */
+    public  <T> List<T> safeGetForList(String key, Class<T> clazz, long timeout, TimeUnit timeUnit, CacheLoader<List<T>> cacheLoader);
     /**
      * 放入缓存，自定义超时时间
      */

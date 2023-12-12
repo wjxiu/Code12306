@@ -1,21 +1,13 @@
 package org.wjx.config;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RedissonClient;
-import org.redisson.client.RedisClient;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.wjx.RedisKeySerializer;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.wjx.RedisKeyValueSerializer;
 import org.wjx.core.StringRedisTemplateProxy;
 
 
@@ -30,16 +22,19 @@ public class CacheAutoConfiguration {
 
     private final RedisCustomProperties redisDistributedProperties;
     @Bean
-    public RedisKeySerializer redisKeySerializer() {
+    public RedisKeyValueSerializer redisKeySerializer() {
         String prefix = RedisCustomProperties.PREFIX;
         String prefixCharset = redisDistributedProperties.getPrefixCharset();
-        return new RedisKeySerializer(prefix, prefixCharset);
+        return new RedisKeyValueSerializer(prefix, prefixCharset);
     }
     @Bean
-    public StringRedisTemplateProxy proxy(RedisKeySerializer redisKeySerializer,
+    public StringRedisTemplateProxy proxy(RedisKeyValueSerializer redisKeyValueSerializer,
                                           StringRedisTemplate template,
                                           RedissonClient redissonClient){
-        template.setKeySerializer(redisKeySerializer);
+        template.setKeySerializer(redisKeyValueSerializer);
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashKeySerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
         return  new StringRedisTemplateProxy(template, redisDistributedProperties, redissonClient);
     }
     @Bean

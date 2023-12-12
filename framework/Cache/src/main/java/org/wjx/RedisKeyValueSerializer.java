@@ -13,7 +13,7 @@ import java.nio.charset.Charset;
  */
 
 @RequiredArgsConstructor
-public class RedisKeySerializer implements InitializingBean, RedisSerializer<String> {
+public class RedisKeyValueSerializer implements InitializingBean, RedisSerializer<String> {
 
     private final String keyPrefix;
 

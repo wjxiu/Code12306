@@ -101,14 +101,16 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
             ArrayList<int[]> choseseats = new ArrayList<>();
             //            车厢的每一行都匹配一次
             for (int j = 0; j < PlaneMapOfSeats.length; j++) {
+                if (choseseats.size()==passNum)break;
                 int[] row = PlaneMapOfSeats[j];
                 for (String chooseSeat : chooseSeats) {
-                    char c = chooseSeat.charAt(0);
-                    if (row[c - 'a'] == 0) {
+                    if (choseseats.size()==passNum)break;
+                    Character c = Character.toLowerCase(chooseSeat.charAt(0));
+                    if (row[Character.toLowerCase(c) - 'a'] == 0) {
                         choseseats.add(new int[]{j, c - 'a'});
                     } else {
                         //有一个不符合,删掉之前匹配的座位
-                        choseseats.clear();
+                    if (!choseseats.isEmpty())choseseats.clear();
                     }
                 }
             }
@@ -173,6 +175,7 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
 //        保存每个车厢的剩余座位个数,key->carriagenum,value->对应车厢座位数目
         Map<String, Integer> demotionStockNumMap = new LinkedHashMap<>();
         for (int i = 0; i < availableCarrage.size(); i++) {
+            //todo 添加缓存
             String carragenum = availableCarrage.get(i);
             Integer remainticketeachcarriage = trainStationCarriageRemainingTicket.get(i);
             if (remainticketeachcarriage < passNum) continue;

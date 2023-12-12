@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.wjx.Res;
 import org.wjx.annotation.Idempotent;
+import org.wjx.core.SafeCache;
 import org.wjx.dto.req.PassengerRemoveReqDTO;
 import org.wjx.dto.req.PassengerReqDTO;
 import org.wjx.dto.resp.PassengerActualRespDTO;
@@ -15,6 +16,9 @@ import org.wjx.service.PassengerService;
 import org.wjx.user.core.UserContext;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.wjx.constant.RedisKeyConstant.USER_PASSENGER_LIST;
 
 /**
  * @author xiu
@@ -26,6 +30,7 @@ import java.util.List;
 @Slf4j
 public class PassengerController {
     private final PassengerService passengerService;
+    final SafeCache cache;
     @GetMapping("/query")
     public Res<List<PassengerRespDTO>> listPassengerQueryByUsername() {
         return Res.success(passengerService.listPassengerQueryByUsername(UserContext.getUserName()));
@@ -36,7 +41,8 @@ public class PassengerController {
      */
     @GetMapping("/inner/passenger/actual/query/ids")
     public Res<List<PassengerActualRespDTO>> listPassengerQueryByIds(@RequestParam("username") String username, @RequestParam("ids") List<Long> ids) {
-        return Res.success(passengerService.listPassengerQueryByIds(username, ids));
+        List<PassengerActualRespDTO> list = passengerService.listPassengerQueryByIds(username, ids);
+        return Res.success(list);
     }
     @Idempotent(            prefix = "index12306-user:lock_passenger-alter:",
             key = "T(org.wjx.user.core.UserContext).getUserName()",
