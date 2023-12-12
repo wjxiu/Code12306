@@ -53,6 +53,10 @@ public class RedisKeyConstant {
      *通过火车id查询火车信息
      */
     public static final String TRAIN_INFO_BY_TRAINID= "ticket:sevice:train-info-trainId:";
+    /**
+     *通过火车id查询火车信息
+     */
+    public static final String TRAIN_PRICE_HASH = "ticket:sevice:train-price:";
 
 
 

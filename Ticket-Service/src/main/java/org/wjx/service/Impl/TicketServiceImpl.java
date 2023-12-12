@@ -113,8 +113,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             String arrival = ticketListDTO.getArrival();
             String trainId = ticketListDTO.getTrainId();
             for (SeatClassDTO seatClassDTO : ticketListDTO.getSeatClassList()) {
-                String trainStationPriceDOString = cache.SafeGetOfHash("ticket:sevice:train:price:" +
-                        String.join(":", departure, arrival, trainId), seatClassDTO.getType().toString(), String.class, (CacheLoader<String>) () -> {
+                String trainStationPriceDOString = cache.SafeGetOfHash(TRAIN_PRICE_HASH +
+                        String.join("-", trainId,departure, arrival ), seatClassDTO.getType().toString(), String.class, (CacheLoader<String>) () -> {
                     TrainStationPriceDO trainStationPriceDO = priceMapper.selectOne(new LambdaQueryWrapper<TrainStationPriceDO>()
                             .eq(TrainStationPriceDO::getDeparture, departure)
                             .eq(TrainStationPriceDO::getArrival, arrival)
