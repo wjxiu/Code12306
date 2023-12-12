@@ -46,6 +46,7 @@ public class StringRedisTemplateProxy implements SafeCache {
     public void put(String key, Object value) {
         put(key, value, redisproperties.timeOut, redisproperties.timeUnit);
     }
+
     public void putOfHash(String key, String hashkey, Object value) {
         if (value instanceof String) {
             redisTemplate.opsForHash().put(key, hashkey, value);
@@ -54,17 +55,17 @@ public class StringRedisTemplateProxy implements SafeCache {
         }
     }
 
-    public <T> T SafeGetOfHash(String key, String hashkey, Class<T> clazz,CacheLoader<T> loader) {
-        T res =(T) redisTemplate.opsForHash().get(key, hashkey);
+    public <T> T SafeGetOfHash(String key, String hashkey, Class<T> clazz, CacheLoader<T> loader) {
+        T res = (T) redisTemplate.opsForHash().get(key, hashkey);
         if (res != null) return res;
         RLock lock = redissonClient.getLock(KEYPREFIX + key + ":" + hashkey);
         boolean b = lock.tryLock();
         try {
             if (b) {
-                res =(T) redisTemplate.opsForHash().get(key, hashkey);
+                res = (T) redisTemplate.opsForHash().get(key, hashkey);
                 if (res != null) return res;
                 res = loader.load();
-                putOfHash(key,hashkey,res);
+                putOfHash(key, hashkey, res);
             }
         } finally {
             if (lock != null) {
@@ -160,19 +161,25 @@ public class StringRedisTemplateProxy implements SafeCache {
         return safeGet(key, clazz, timeout, timeUnit, cacheLoader, null, null);
     }
 
-    public  <T> List<T>  safeGetForList(String key, Class<T> clazz, long timeout, TimeUnit timeUnit, CacheLoader<List<T>> cacheLoader) {
-        ListOperations<String,T> listOperations = getInstance().opsForList();
-        List<T> range = listOperations.range( key, 0, -1);
-        if (range!=null&&!range.isEmpty())return range;
+    public <T> List<T> safeGetForList(String key, Class<T> clazz, long timeout, TimeUnit timeUnit, CacheLoader<List<T>> cacheLoader) {
+        ListOperations<String, T> listOperations = getInstance().opsForList();
+        List<T> range = listOperations.range(key, 0, -1);
+        if (range != null && !range.isEmpty()) return range;
         RLock lock = redissonClient.getLock(KEYPREFIX + key);
         boolean b = lock.tryLock();
-        if (b){
-             range = listOperations.range( key, 0, -1);
-            if (range!=null&&!range.isEmpty())return range;
-            range= cacheLoader.load();
-            Long l = listOperations.leftPushAll(key, range);
-            if (l!=range.size())throw new ServiceException("缓存列表出错");
+        try {
+            if (b) {
+                range = listOperations.range(key, 0, -1);
+                if (range != null && !range.isEmpty()) return range;
+                range = cacheLoader.load();
+                Long l = listOperations.leftPushAll(key, range);
+                getInstance().expire(key,timeout,timeUnit);
+                if (l != range.size()) throw new ServiceException("缓存列表出错");
+            }
+        } finally {
+            lock.unlock();
         }
+
         return range;
     }
 

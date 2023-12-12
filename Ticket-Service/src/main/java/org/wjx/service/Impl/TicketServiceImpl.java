@@ -165,7 +165,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             trainDoToTicketListDTO(ticketListDTO, tstationDO, trainDO);
         }
         List<Long> list1 = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
-        String collect = list1.stream().map(String::valueOf).collect(Collectors.joining("-"));
+        String collect = list1.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
 //        这里获取到座位信息
         List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, CarriageDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
             return carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
