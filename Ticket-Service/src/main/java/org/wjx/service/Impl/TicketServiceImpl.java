@@ -54,6 +54,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.wjx.constant.RedisKeyConstant.*;
+import static org.wjx.constant.SystemConstant.ADVANCE_TICKET_DAY;
 
 /**
  * @author xiu
@@ -149,7 +150,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         StringBuffer sb = new StringBuffer();
         String starttime = DateUtil.format(requestParam.getDepartureDate(), "yyyy-MM-dd");
         String list = cache.safeGet("ticket:sevice:train:query" + String.join("-", starttime, startregion, endregion),
-                String.class, 15L, TimeUnit.DAYS,
+                String.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS,
                 () -> JSON.toJSONString(trainStationRelationMapper.queryByParam(starttime, startregion, endregion)));
         List<TrainStationRelationDO> trainStationRelationDOS = JSON.parseArray(list, TrainStationRelationDO.class);
 //        找到了符合要求的列车
@@ -158,23 +159,20 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
             ticketListDTO.setTrainId(tstationDO.getTrainId().toString());
-            String trainDoString = cache.safeGet("ticket:sevice:train:id:" + ticketListDTO.getTrainId(), String.class, 15L, TimeUnit.DAYS, () -> {
-                return JSON.toJSONString(trainMapper.selectById(ticketListDTO.getTrainId()));
-            });
-            TrainDO trainDO = JSON.parseObject(trainDoString, TrainDO.class);
+            TrainDO trainDO=  cache.safeGet("ticket:sevice:train:id:" + ticketListDTO.getTrainId(), TrainDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+                 return trainMapper.selectById(ticketListDTO.getTrainId());
+             });
             sb.append(trainDO.getTrainBrand()).append(",");
             trainDoToTicketListDTO(ticketListDTO, tstationDO, trainDO);
         }
         List<Long> list1 = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
         String collect = list1.stream().map(String::valueOf).collect(Collectors.joining("-"));
-        String carriageDOString = cache.safeGet(TRAINCARRAGE + collect, String.class, 15L, TimeUnit.DAYS, () -> {
-            return JSON.toJSONString(carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
-                    .in(CarriageDO::getTrainId, list1)
-                    .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount))
-            );
-        });
 //        这里获取到座位信息
-        List<CarriageDO> carriageDOS = JSON.parseArray(carriageDOString, CarriageDO.class);
+        List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, CarriageDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+            return carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
+                    .in(CarriageDO::getTrainId, list1)
+                    .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount));
+        });
         Map<String, Set<Integer>> trainToType = carriageDOS.stream()
                 .collect(Collectors.groupingBy(a -> a.getTrainId().toString(), Collectors.mapping(CarriageDO::getCarriageType, Collectors.toSet())));
         GeneCacheOfTicketForParchase(ticketListDTOS, trainToType);
@@ -207,7 +205,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             String trainId = ticketListDTO.getTrainId();
 //           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
 //           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
-            String trainStationDOSTring = cache.safeGet("ticket-service:train:" + trainId, String.class, 15L, TimeUnit.DAYS, () -> {
+            String trainStationDOSTring = cache.safeGet(TRAIN_INFO+ trainId, String.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                 return JSON.toJSONString(trainStationMapper.queryBytrainId(trainId));
             });
             List<TrainStationDO> trainStationDOS = JSON.parseArray(trainStationDOSTring, TrainStationDO.class);
@@ -339,7 +337,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         TrainDO trainDO = cache.safeGet(
                 "frame.redisticket-service:train:" + trainId,
                 TrainDO.class,
-                15L,
+                ADVANCE_TICKET_DAY,
                 TimeUnit.DAYS, () -> trainMapper.selectById(trainId));
 //        选出座位
         List<TrainPurchaseTicketRespDTO> trainPurchaseTicketResults = seatTypeSelector.select(trainDO.getTrainType(), requestParam);

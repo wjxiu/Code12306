@@ -15,8 +15,8 @@ import org.wjx.dao.mapper.TrainStationMapper;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static org.wjx.constant.RedisKeyConstant.REMAINTICKETOFSEAT_TRAIN;
-import static org.wjx.constant.RedisKeyConstant.TRAINCARRAGE;
+import static org.wjx.constant.RedisKeyConstant.*;
+import static org.wjx.constant.SystemConstant.ADVANCE_TICKET_DAY;
 
 /**
  * todo 没写完,不想写
@@ -35,8 +35,8 @@ public class SeatMarginCacheLoader {
         if (TrainIdToSeatTypeMap==null||trainIds==null||startStationToEndStation==null){
             for (String trainId : trainIds) {
                 for (String[] twoStation : startStationToEndStation) {
-                    String trainStationDOSTring = cache.safeGet("ticket-service:train:" + trainId, String.class, 15L, TimeUnit.DAYS, () -> {
-                        return JSON.toJSONString(trainStationMapper.queryBytrainId(trainId));
+                    List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_INFO + trainId, TrainStationDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+                        return trainStationMapper.queryBytrainId(trainId);
                     });
                     Set<Integer> set = TrainIdToSeatTypeMap.get(trainId);
                     for (Integer type : set) {
