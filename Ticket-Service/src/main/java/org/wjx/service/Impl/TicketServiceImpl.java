@@ -5,9 +5,7 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -139,27 +137,28 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * @return
      */
     private TicketPageQueryRespDTO gene(TicketPageQueryReqDTO requestParam) {
-        String startregion = cache.SafeGetOfHash("ticket:sevice:code:trainName", requestParam.getFromStation(), String.class, () -> {
+        String startregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getFromStation(), String.class, () -> {
             return regionMapper.selectRegionNameByCode(requestParam.getFromStation());
         });
-        String endregion = cache.SafeGetOfHash("ticket:sevice:code:trainName", requestParam.getToStation(), String.class, () -> {
+        String endregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getToStation(), String.class, () -> {
             return regionMapper.selectRegionNameByCode(requestParam.getToStation());
         });
         TicketPageQueryRespDTO ticketPageQueryRespDTO = new TicketPageQueryRespDTO();
         HashSet<Integer> typeClassSetRes = new HashSet<>();
         StringBuffer sb = new StringBuffer();
         String starttime = DateUtil.format(requestParam.getDepartureDate(), "yyyy-MM-dd");
-        String list = cache.safeGet("ticket:sevice:train:query" + String.join("-", starttime, startregion, endregion),
-                String.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS,
-                () -> JSON.toJSONString(trainStationRelationMapper.queryByParam(starttime, startregion, endregion)));
-        List<TrainStationRelationDO> trainStationRelationDOS = JSON.parseArray(list, TrainStationRelationDO.class);
+        List<TrainStationRelationDO> trainStationRelationDOS = cache.safeGetForList(TRAIN_PASS_ALL_CITY + String.join("-", starttime, startregion, endregion), TrainStationRelationDO.class,
+                ADVANCE_TICKET_DAY, TimeUnit.DAYS,
+                () -> {
+                    return trainStationRelationMapper.queryByParam(starttime, startregion, endregion);
+                });
 //        找到了符合要求的列车
         ArrayList<TicketListDTO> ticketListDTOS = new ArrayList<>();
         for (TrainStationRelationDO tstationDO : trainStationRelationDOS) {
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
             ticketListDTO.setTrainId(tstationDO.getTrainId().toString());
-            TrainDO trainDO=  cache.safeGet("ticket:sevice:train:id:" + ticketListDTO.getTrainId(), TrainDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+            TrainDO trainDO=  cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), TrainDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                  return trainMapper.selectById(ticketListDTO.getTrainId());
              });
             sb.append(trainDO.getTrainBrand()).append(",");
@@ -205,7 +204,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             String trainId = ticketListDTO.getTrainId();
 //           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
 //           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
-            List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_INFO + trainId, TrainStationDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+            List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, TrainStationDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                 return trainStationMapper.queryBytrainId(trainId);
             });
             ArrayList<String[]> startAndEndStation = geneListOfCache(trainStationDOS);

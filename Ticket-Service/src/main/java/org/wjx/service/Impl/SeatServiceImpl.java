@@ -94,7 +94,7 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
 
     /**
      * 锁定选中以及沿途车票状态
-     *todo 有bug,锁定了全部统一等级的车票
+     *
      * @param trainId                     列车 ID
      * @param departure                   出发站
      * @param arrival                     到达站

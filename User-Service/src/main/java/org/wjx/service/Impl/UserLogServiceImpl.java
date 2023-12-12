@@ -46,7 +46,7 @@ public class UserLogServiceImpl extends ServiceImpl<UserMapper, UserDO> implemen
     final RBloomFilter<String> usernameFilter;
     final AbstractFilterChainsContext abstractFilterContext;
     final PassengerService passengerService;
-    String LOCK = "UserLogServiceImpl::removeUser::";
+    String LOCK = "UserLogServiceImpl:removeUser:";
 
     @Override
     public UserLoginRespDTO login(UserLoginReqDTO loginReqDTO) {

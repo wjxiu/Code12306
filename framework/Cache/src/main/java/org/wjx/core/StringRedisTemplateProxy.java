@@ -29,7 +29,7 @@ public class StringRedisTemplateProxy implements SafeCache {
     final StringRedisTemplate redisTemplate;
     final RedisCustomProperties redisproperties;
     final RedissonClient redissonClient;
-    final String KEYPREFIX = "REDIS::LOCK::PREFIX::";
+    final String KEYPREFIX = "REDIS:LOCK:PREFIX:";
 
 
     @Override

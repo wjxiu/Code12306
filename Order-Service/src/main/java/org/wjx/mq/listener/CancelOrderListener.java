@@ -42,7 +42,7 @@ public class CancelOrderListener {
             List<OrderItemDO> orderItemDOS = orderItemServicemapper.selectList(new LambdaQueryWrapper<OrderItemDO>()
                     .eq(OrderItemDO::getOrderSn, delayCloseOrderEvent.getOrderSn()));
             List<ResetSeatDTO> resetSeatDTOS = BeanUtil.convertToList(orderItemDOS, ResetSeatDTO.class);
-//            todo 这里报错:没有token
+//            fixme 这里报错:没有token
             seatRemoteService.ResetSeatStatus(resetSeatDTOS);
             channel.basicAck(message.getMessageProperties().getDeliveryTag(),true);
         }catch (Exception e){

@@ -30,7 +30,7 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class IdempotentParamExeciteHandler extends AbstractIdempotentExecuteHandler implements IdempotentParamService {
     final RedissonClient redissonClient;
-    final String LOCK="redis::lock::restAPI";
+    final String LOCK="redis:lock:restAPI";
 
 
     @Override

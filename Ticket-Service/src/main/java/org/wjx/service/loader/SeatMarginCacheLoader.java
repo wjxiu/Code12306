@@ -1,12 +1,9 @@
 package org.wjx.service.loader;
 
-import com.alibaba.fastjson2.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.stereotype.Component;
 import org.wjx.core.SafeCache;
-import org.wjx.dao.DO.CarriageDO;
 import org.wjx.dao.DO.TrainStationDO;
 import org.wjx.dao.mapper.CarrageMapper;
 import org.wjx.dao.mapper.SeatMapper;
@@ -35,7 +32,7 @@ public class SeatMarginCacheLoader {
         if (TrainIdToSeatTypeMap==null||trainIds==null||startStationToEndStation==null){
             for (String trainId : trainIds) {
                 for (String[] twoStation : startStationToEndStation) {
-                    List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_INFO + trainId, TrainStationDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+                    List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, TrainStationDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                         return trainStationMapper.queryBytrainId(trainId);
                     });
                     Set<Integer> set = TrainIdToSeatTypeMap.get(trainId);

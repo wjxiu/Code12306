@@ -11,6 +11,13 @@ import java.util.List;
  * @create 2023-12-01 17:44
  */
 public interface TrainStationRelationMapper extends BaseMapper<TrainStationRelationDO> {
+    /**
+     * 查询火车经过那些城市
+     * @param startTime
+     * @param startRegion
+     * @param endRegion
+     * @return
+     */
     public List<TrainStationRelationDO> queryByParam(@Param("startTime") String startTime,
                                                      @Param("startRegion") String startRegion,
                                                      @Param("endRegion") String endRegion);
