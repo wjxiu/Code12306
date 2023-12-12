@@ -200,25 +200,25 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * 三个for循环保存 列车id-开始车站-结束车站,field:seatType value seatcount
      */
     private void GeneCacheOfTicketForParchase(ArrayList<TicketListDTO> ticketListDTOS, Map<String, Set<Integer>> trainToType) {
-        HashOperations hashOperations = cache.getInstance().opsForHash();
+        HashOperations<String,Integer,Integer> hashOperations = cache.getInstance().opsForHash();
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             String trainId = ticketListDTO.getTrainId();
 //           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
 //           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
-            String trainStationDOSTring = cache.safeGet(TRAIN_INFO+ trainId, String.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-                return JSON.toJSONString(trainStationMapper.queryBytrainId(trainId));
+            List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_INFO + trainId, TrainStationDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+                return trainStationMapper.queryBytrainId(trainId);
             });
-            List<TrainStationDO> trainStationDOS = JSON.parseArray(trainStationDOSTring, TrainStationDO.class);
             ArrayList<String[]> startAndEndStation = geneListOfCache(trainStationDOS);
             for (String[] stationDOS : startAndEndStation) {
                 String stratstation = stationDOS[0];
                 String endstation = stationDOS[1];
                 Set<Integer> types = trainToType.get(trainId);
                 for (Integer type : types) {
-                    Object o = hashOperations.get(REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation), type.toString());
+                    String key = REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation);
+                    Object o = hashOperations.get(key, type);
                     if (o == null) {
                         Integer count = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratstation, endstation);
-                        hashOperations.put(REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation), type.toString(), count.toString());
+                        hashOperations.put(key, type, count);
                     }
                 }
             }
