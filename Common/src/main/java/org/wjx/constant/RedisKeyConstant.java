@@ -30,6 +30,9 @@ public class RedisKeyConstant {
      * 用户乘车人列表，Key Prefix + 用户名
      */
     public static final String USER_PASSENGER_LIST = "user-service:user-passenger-list:";
+    /**
+     * 列车对应的站点之间的座位数
+     */
     public static final String REMAINTICKETOFSEAT_TRAIN="ticket-service:train-seat-count:";
     /**
      * 列车经过的站点

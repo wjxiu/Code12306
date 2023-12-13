@@ -195,6 +195,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 
     /**
      * 三个for循环保存 列车id-开始车站-结束车站,field:seatType value seatcount
+     * 将座位信息保存到缓存中
      */
     private void GeneCacheOfTicketForParchase(ArrayList<TicketListDTO> ticketListDTOS, Map<String, Set<Integer>> trainToType) {
         HashOperations<String,Integer,Integer> hashOperations = cache.getInstance().opsForHash();
@@ -241,6 +242,11 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         return res;
     }
 
+    /**
+     * 设置最终结果的中的座位数量，座位数量已经保存到缓存中了
+     * @param carriageDOS
+     * @param ticketListDTOS
+     */
     private void setQuantity(List<CarriageDO> carriageDOS, ArrayList<TicketListDTO> ticketListDTOS) {
         Map<AbstractMap.SimpleEntry<String, Integer>, Integer> simpleEntryIntegerMap = groupByTrainIdAndCarriageType(carriageDOS);
         for (TicketListDTO ticketListDTO : ticketListDTOS) {

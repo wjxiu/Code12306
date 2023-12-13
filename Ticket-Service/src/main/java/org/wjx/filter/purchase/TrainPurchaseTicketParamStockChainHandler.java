@@ -73,9 +73,6 @@ public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseT
             }
         }
     }
-
-//    public void  GetSeatNumFromDB()
-
     /**
      * @return
      */
