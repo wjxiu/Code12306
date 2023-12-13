@@ -255,7 +255,7 @@ public class StringRedisTemplateProxy implements SafeCache {
                 || Optional.ofNullable(cacheCheckFilter).map(each -> each.filter(key)).orElse(false)
                 || Optional.ofNullable(bloomFilter).map(each -> !each.contains(key)).orElse(false)
         ) {
-            return (T) value;
+            return value;
         }
         RLock lock = redissonClient.getLock(KEYPREFIX + key);
         try {

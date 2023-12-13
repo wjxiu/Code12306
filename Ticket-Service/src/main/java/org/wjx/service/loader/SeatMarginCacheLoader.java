@@ -18,43 +18,39 @@ import static org.wjx.constant.SystemConstant.ADVANCE_TICKET_DAY;
 /**
  * todo 没写完,不想写
  * 加载列车剩下的座位
+ *
  * @author xiu
  * @create 2023-12-04 20:05
  */
-@Component@RequiredArgsConstructor
+@Component
+@RequiredArgsConstructor
 public class SeatMarginCacheLoader {
     final CarrageMapper carrageMapper;
     final SafeCache cache;
     final TrainStationMapper trainStationMapper;
     final SeatMapper seatMapper;
-    public Map<String, String> load(List<String> trainIds, Map<String, Set<Integer>> TrainIdToSeatTypeMap, List<String[]>startStationToEndStation) {
-        HashOperations hashOperations = cache.getInstance().opsForHash();
-        if (TrainIdToSeatTypeMap==null||trainIds==null||startStationToEndStation==null){
-            for (String trainId : trainIds) {
-                for (String[] twoStation : startStationToEndStation) {
-                    List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, TrainStationDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-                        return trainStationMapper.queryBytrainId(trainId);
-                    });
-                    Set<Integer> set = TrainIdToSeatTypeMap.get(trainId);
-                    for (Integer type : set) {
-                        String stratstation=twoStation[0];
-                        String endstation=twoStation[1];
-                        Object o = hashOperations.get(REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation), type.toString());
-                        if (o == null) {
-                            Integer count = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratstation, endstation);
-                            hashOperations.put(REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation), type.toString(), count.toString());
-                        }
-                    }
-                }
-            }
-//            自己拼接
-        }else{
-//            直接用
 
-        }
-        return null;
-    }
-
+//    /**
+//     * 生成seattype->seatCount的map
+//     * @param trainIds
+//     * @param TrainIdToSeatTypeMap
+//     * @return
+//     */
+//    public Map<Integer, Integer> load(List<String> trainIds, Map<String, Set<Integer>> TrainIdToSeatTypeMap, String startStation,String ToEndStation) {
+//        HashMap<Integer, Integer> map = new HashMap<>();
+//        for (String trainId : trainIds) {
+//                Set<Integer> set = TrainIdToSeatTypeMap.get(trainId);
+//                for (Integer type : set) {
+//                    String key = REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation);
+//                    Integer seatCount = cache.SafeGetOfHash(key, type, () -> {
+//                        return seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratstation, endstation);
+//                    });
+//                    map.put(type,seatCount);
+//                }
+//
+//        }
+//        return map;
+//    }
     ArrayList<String[]> geneListOfCache(List<TrainStationDO> arr) {
         ArrayList<String[]> res = new ArrayList<>();
         arr.sort(Comparator.comparingInt(o -> Integer.parseInt(o.getSequence())));
