@@ -61,7 +61,7 @@ public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseT
 //                    根据train_id,seat_type,起点,终点查询座位数量
                     log.info("查询数据库");
                     for (PurchaseTicketPassengerDetailDTO passenger : passengers) {
-
+//                        fixme 可以抽取出来作为方法
                         Integer seatType = passenger.getSeatType();
                         Integer seatCount = cache.SafeGetOfHash(KEY, seatType, () -> {
                             return seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, seatType, departure, arrival);

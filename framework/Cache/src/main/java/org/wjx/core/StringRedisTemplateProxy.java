@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import static org.wjx.constant.SystemConstant.ADVANCE_TICKET_DAY;
+
 /**
  * @author xiu
  * @create 2023-11-25 14:36
@@ -57,6 +59,7 @@ public class StringRedisTemplateProxy implements SafeCache {
                 if (hv != null) return hv;
                 hv = loader.load();
                 hashOperations.put(key, hashkey, hv);
+                getInstance().expire(key,ADVANCE_TICKET_DAY,TimeUnit.DAYS);
             }
         } finally {
             if (lock != null) {

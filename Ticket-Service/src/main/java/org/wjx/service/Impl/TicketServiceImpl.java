@@ -210,13 +210,12 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 String stratstation = stationDOS[0];
                 String endstation = stationDOS[1];
                 Set<Integer> types = trainToType.get(trainId);
+//                fixme 可以抽取出来作为方法
                 for (Integer type : types) {
-                    String key = REMAINTICKETOFSEAT_TRAIN + String.join("-", trainId, stratstation, endstation);
-                    Object o = hashOperations.get(key, type);
-                    if (o == null) {
-                        Integer count = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratstation, endstation);
-                        hashOperations.put(key, type, count);
-                    }
+                    String KEY = REMAINTICKETOFSEAT_TRAIN +  StrUtil.join("-", trainId, stratstation, endstation);
+                    cache.SafeGetOfHash(KEY, type, () -> {
+                        return seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratstation, endstation);
+                    });
                 }
             }
         }
