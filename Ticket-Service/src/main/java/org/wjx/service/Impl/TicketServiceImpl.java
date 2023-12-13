@@ -396,7 +396,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      */
     @Override
     public TicketPurchaseRespDTO purchaseTicketsV2(PurchaseTicketReqDTO requestParam) {
-        RedisTemplate instance = cache.getInstance();
         return null;
     }
 
@@ -453,6 +452,11 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                     .eq(SeatDO::getTrainId, resetSeatDTO.getTrainId())
                     .eq(SeatDO::getSeatType, resetSeatDTO.getSeatType()));
             if (update < 1) return false;
+            // 删除缓存
+            String join = String.join("-", String.valueOf(resetSeatDTO.getTrainId()),
+                    resetSeatDTO.getStartStation(), resetSeatDTO.getEndStation());
+            Boolean delete = cache.getInstance().delete(REMAINTICKETOFSEAT_TRAIN + join);
+            if (Boolean.FALSE.equals(delete)) log.info("删除座位数量缓存异常");
         }
         return true;
     }

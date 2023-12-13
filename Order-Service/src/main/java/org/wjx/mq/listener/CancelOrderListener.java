@@ -1,21 +1,17 @@
 package org.wjx.mq.listener;
 
-import cn.hutool.db.sql.Order;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 import org.wjx.dao.DO.OrderItemDO;
 import org.wjx.dao.mapper.OrderItemMapper;
 import org.wjx.dto.event.DelayCloseOrderEvent;
 import org.wjx.remote.SeatRemoteService;
 import org.wjx.remote.dto.ResetSeatDTO;
-import org.wjx.service.OrderItemService;
 import org.wjx.service.OrderService;
 import org.wjx.utils.BeanUtil;
 
