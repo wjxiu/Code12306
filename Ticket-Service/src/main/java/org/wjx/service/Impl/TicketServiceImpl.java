@@ -112,17 +112,16 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             String arrival = ticketListDTO.getArrival();
             String trainId = ticketListDTO.getTrainId();
             for (SeatClassDTO seatClassDTO : ticketListDTO.getSeatClassList()) {
-                String trainStationPriceDOString = cache.SafeGetOfHash(TRAIN_PRICE_HASH +
-                        String.join("-", trainId,departure, arrival ), seatClassDTO.getType().toString(), () -> {
+                Integer price = cache.SafeGetOfHash(TRAIN_PRICE_HASH +
+                        String.join("-", trainId, departure, arrival), seatClassDTO.getType(), () -> {
                     TrainStationPriceDO trainStationPriceDO = priceMapper.selectOne(new LambdaQueryWrapper<TrainStationPriceDO>()
                             .eq(TrainStationPriceDO::getDeparture, departure)
                             .eq(TrainStationPriceDO::getArrival, arrival)
                             .eq(TrainStationPriceDO::getTrainId, trainId)
                             .eq(TrainStationPriceDO::getSeatType, seatClassDTO.getType())
                             .select(TrainStationPriceDO::getPrice));
-                    return trainStationPriceDO.getPrice().toString();
+                    return trainStationPriceDO.getPrice();
                 });
-                Long price = JSON.parseObject(trainStationPriceDOString, Long.class);
                 BigDecimal bigDecimal = new BigDecimal(price / 100).setScale(2, RoundingMode.HALF_UP);
                 seatClassDTO.setPrice(bigDecimal);
             }
