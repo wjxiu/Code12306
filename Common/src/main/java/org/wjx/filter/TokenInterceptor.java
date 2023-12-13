@@ -27,7 +27,7 @@ public class TokenInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String servletPath = request.getServletPath();
 //        token过滤白名单
-        List<String> list = Arrays.asList("/setfortest", "/error", "/getfortest","/createToken","/test");
+        List<String> list = Arrays.asList("/setfortest", "/error", "/getfortest","/createToken","/test","/api/ticket-service/ticket/ResetSeatStatus");
         boolean inwhitelist = list.stream().anyMatch(servletPath::startsWith);
         if (inwhitelist)return true;
         String token = request.getHeader("Authorization");

@@ -65,7 +65,7 @@ public class TicketController {
         return Res.success(ticketService.commonTicketRefund(requestParam));
     }
     @PostMapping("/ResetSeatStatus")
-    public Res<Boolean> ResetSeatStatus(@Validated @RequestBody List<ResetSeatDTO> list) {
+    public Res<Boolean> ResetSeatStatus( @RequestBody List<ResetSeatDTO> list) {
         return Res.success(ticketService.ResetSeatStatus(list));
     }
 

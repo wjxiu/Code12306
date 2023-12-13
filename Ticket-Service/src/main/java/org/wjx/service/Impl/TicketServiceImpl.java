@@ -39,6 +39,7 @@ import org.wjx.remote.TicketOrderRemoteService;
 import org.wjx.remote.dto.ResetSeatDTO;
 import org.wjx.remote.dto.TicketOrderCreateRemoteReqDTO;
 import org.wjx.remote.dto.TicketOrderItemCreateRemoteReqDTO;
+import org.wjx.service.SeatService;
 import org.wjx.service.TicketService;
 import org.wjx.user.core.ApplicationContextHolder;
 import org.wjx.user.core.UserContext;
@@ -74,6 +75,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     final SeatMapper seatMapper;
     final TrainSeatTypeSelector seatTypeSelector;
     final AbstractFilterChainsContext filterChainsContext;
+    final SeatService seatService;
 
 
     /**
@@ -135,7 +137,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * @return
      */
     private TicketPageQueryRespDTO gene(TicketPageQueryReqDTO requestParam) {
-        String startregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getFromStation(),() -> {
+        String startregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getFromStation(), () -> {
             return regionMapper.selectRegionNameByCode(requestParam.getFromStation());
         });
         String endregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getToStation(), () -> {
@@ -156,7 +158,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
             ticketListDTO.setTrainId(tstationDO.getTrainId().toString());
-            TrainDO trainDO=  cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+            TrainDO trainDO = cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                 return trainMapper.selectById(ticketListDTO.getTrainId());
             });
             sb.append(trainDO.getTrainBrand()).append(",");
@@ -198,7 +200,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * 将座位信息保存到缓存中
      */
     private void GeneCacheOfTicketForParchase(ArrayList<TicketListDTO> ticketListDTOS, Map<String, Set<Integer>> trainToType) {
-        HashOperations<String,Integer,Integer> hashOperations = cache.getInstance().opsForHash();
+        HashOperations<String, Integer, Integer> hashOperations = cache.getInstance().opsForHash();
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             String trainId = ticketListDTO.getTrainId();
 //           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
@@ -211,9 +213,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 String stratstation = stationDOS[0];
                 String endstation = stationDOS[1];
                 Set<Integer> types = trainToType.get(trainId);
-//                fixme 可以抽取出来作为方法
+//                optimize 可以抽取出来作为方法
                 for (Integer type : types) {
-                    String KEY = REMAINTICKETOFSEAT_TRAIN +  StrUtil.join("-", trainId, stratstation, endstation);
+                    String KEY = REMAINTICKETOFSEAT_TRAIN + StrUtil.join("-", trainId, stratstation, endstation);
                     cache.SafeGetOfHash(KEY, type, () -> {
                         return seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratstation, endstation);
                     });
@@ -244,6 +246,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 
     /**
      * 设置最终结果的中的座位数量，座位数量已经保存到缓存中了
+     *
      * @param carriageDOS
      * @param ticketListDTOS
      */
@@ -320,7 +323,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     @Override
     public TicketPurchaseRespDTO purchaseTicketsV1(PurchaseTicketReqDTO requestParam) {
 //        先过滤
-        chainsContext.execute("TrainPurchaseTicketChainFilter",requestParam);
+        chainsContext.execute("TrainPurchaseTicketChainFilter", requestParam);
         String lockKey = String.format(String.format(LOCK_PURCHASE_TICKETS, requestParam.getTrainId()));
         RLock lock = redissonClient.getLock(lockKey);
         boolean b = lock.tryLock();
@@ -430,20 +433,26 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     }
 
     /**
-     *设置订单关联的座位状态为0
+     * 设置订单关联的座位状态为0
+     *
      * @param dto
      * @return
      */
     @Override
     public Boolean ResetSeatStatus(List<ResetSeatDTO> dto) {
         for (ResetSeatDTO resetSeatDTO : dto) {
+            seatService.unlock(String.valueOf(  resetSeatDTO.getTrainId()),
+                                                resetSeatDTO.getStartStation(),
+                                                resetSeatDTO.getEndStation(),
+                                                resetSeatDTO.getSeatType());
             SeatDO convert = BeanUtil.convert(resetSeatDTO, SeatDO.class);
+//            optimize 可以设置为别的状态，之后发送到延迟队列，再改为0
             convert.setSeatStatus(0);
             int update = seatMapper.update(convert, new LambdaQueryWrapper<SeatDO>()
                     .eq(SeatDO::getSeatNumber, resetSeatDTO.getSeatNumber())
                     .eq(SeatDO::getTrainId, resetSeatDTO.getTrainId())
                     .eq(SeatDO::getSeatType, resetSeatDTO.getSeatType()));
-            if (update<1)return false;
+            if (update < 1) return false;
         }
         return true;
     }

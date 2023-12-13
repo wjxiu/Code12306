@@ -28,13 +28,15 @@ import static org.wjx.config.RabbitConfig.creatOrder_delayed_queue;
  * @author xiu
  * @create 2023-12-08 14:15
  */
-@Component@RequiredArgsConstructor
+@Component
+@RequiredArgsConstructor
 @Slf4j
 public class CancelOrderListener {
     final OrderService orderService;
     final SeatRemoteService seatRemoteService;
     final OrderItemMapper orderItemServicemapper;
-//    15分钟后执行取消订单操作,自动取消之后需要恢复座位状态
+
+    //    2秒后执行取消订单操作,自动取消之后需要恢复座位状态
     @RabbitListener(queues = creatOrder_delayed_queue)
     public void listenCreate(DelayCloseOrderEvent delayCloseOrderEvent, Channel channel, Message message) throws IOException {
         try {
@@ -42,12 +44,16 @@ public class CancelOrderListener {
             List<OrderItemDO> orderItemDOS = orderItemServicemapper.selectList(new LambdaQueryWrapper<OrderItemDO>()
                     .eq(OrderItemDO::getOrderSn, delayCloseOrderEvent.getOrderSn()));
             List<ResetSeatDTO> resetSeatDTOS = BeanUtil.convertToList(orderItemDOS, ResetSeatDTO.class);
-//            fixme 这里报错:没有token
+            /*
+               optimize
+              这里报错:没有token,(暂时通过加入白名单跳过错误)
+              并且需要将车票的状态改变,和order orderitem
+             */
             seatRemoteService.ResetSeatStatus(resetSeatDTOS);
-            channel.basicAck(message.getMessageProperties().getDeliveryTag(),true);
-        }catch (Exception e){
-            log.info("异常信息-------{}",e.getMessage());
-            channel.basicAck(message.getMessageProperties().getDeliveryTag(),true);
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), true);
+        } catch (Exception e) {
+            log.info("异常信息-------{}", e.getMessage());
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), true);
         }
     }
 }

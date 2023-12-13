@@ -33,9 +33,11 @@ public interface OrderService {
     String createTicketOrder(TicketOrderCreateReqDTO requestParam);
 
     /**
-     * 取消订单或者关闭订单
-     * @param orderSn
-     * @return
+     * 取消订单
+     * 更新订单号对应的订单和订单项的状态为取消(30)
+     *
+     * @param orderSn 订单号
+     * @return 全部更新成功返回true, 否则返回false
      */
     public boolean cancelOrCloseTickOrder(String orderSn);
 }

@@ -1,6 +1,7 @@
 package org.wjx.remote;
 
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,6 +14,7 @@ import java.util.List;
  * @author xiu
  * @create 2023-12-10 16:10
  */
+@Component
 @FeignClient("ticket-service")
 public interface SeatRemoteService {
     @PostMapping("/api/ticket-service/ticket/ResetSeatStatus")

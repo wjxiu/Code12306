@@ -13,4 +13,6 @@ public class ResetSeatDTO {
     String carriageNumber;
     String seatNumber;
     Integer seatType;
+    String startStation;
+    String endStation;
 }

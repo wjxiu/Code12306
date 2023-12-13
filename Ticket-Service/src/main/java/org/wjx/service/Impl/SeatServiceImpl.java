@@ -27,11 +27,13 @@ import static org.wjx.constant.RedisKeyConstant.REMAINTICKETOFSEAT_TRAIN;
  * @create 2023-11-30 9:42
  */
 @Service
-@RequiredArgsConstructor@Slf4j
-public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements SeatService  {
+@RequiredArgsConstructor
+@Slf4j
+public class SeatServiceImpl extends ServiceImpl<SeatMapper, SeatDO> implements SeatService {
     final SeatMapper seatMapper;
     final TrainStationService trainStationService;
     final SafeCache cache;
+
     /**
      * 获取列车车厢中可用座位的座位号集合
      *
@@ -53,7 +55,7 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
                 .eq(SeatDO::getSeatStatus, SeatStatusEnum.AVAILABLE.getCode())
                 .select(SeatDO::getSeatNumber);
         List<SeatDO> list = list(queryWrapper);
-      return   list.stream().map(SeatDO::getSeatNumber).toList();
+        return list.stream().map(SeatDO::getSeatNumber).toList();
     }
 
     /**
@@ -68,8 +70,8 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
     @Override
     public List<Integer> listSeatRemainingTicket(String trainId, String departure, String arrival, List<String> trainCarriageList) {
         SeatDO build = SeatDO.builder().trainId(Long.valueOf(trainId)).startStation(departure).endStation(arrival).build();
-        log.info("build::::{}",build);
-       return   seatMapper.listSeatRemainingTicket(build,trainCarriageList);
+        log.info("build::::{}", build);
+        return seatMapper.listSeatRemainingTicket(build, trainCarriageList);
     }
 
     /**
@@ -93,13 +95,14 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
                 .groupBy(SeatDO::getCarriageNumber)
                 .select(SeatDO::getCarriageNumber);
         List<SeatDO> seatDOList = list(queryWrapper);
-        log.info("seatDOList:::{}",seatDOList);
+        log.info("seatDOList:::{}", seatDOList);
         return seatDOList.stream().map(SeatDO::getCarriageNumber).toList();
     }
 
     /**
      * 锁定选中以及沿途车票状态
-     *锁定后对应的座位数量缓存删除
+     * 锁定后对应的座位数量缓存删除
+     *
      * @param trainId                     列车 ID
      * @param departure                   出发站
      * @param arrival                     到达站
@@ -107,30 +110,30 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
      */
     @Override
     public void lockSeat(String trainId, String departure, String arrival, List<TrainPurchaseTicketRespDTO> trainPurchaseTicketRespList) {
-        log.info("trainPurchaseTicketRespList:::{}",trainPurchaseTicketRespList);
+        log.info("trainPurchaseTicketRespList:::{}", trainPurchaseTicketRespList);
         List<RouteDTO> routeDTOS = trainStationService.listTakeoutTrainStationRoute(trainId, departure, arrival);
-        log.info("routeDTOS::::{}",routeDTOS);
+        log.info("routeDTOS::::{}", routeDTOS);
         for (RouteDTO routeDTO : routeDTOS) {
             for (TrainPurchaseTicketRespDTO ticket : trainPurchaseTicketRespList) {
-                log.info("ticket::{}",ticket);
+                log.info("ticket::{}", ticket);
                 LambdaUpdateWrapper<SeatDO> updateWrapper = Wrappers.lambdaUpdate(SeatDO.class)
-                        .eq(SeatDO::getTrainId,trainId)
-                        .eq(SeatDO::getSeatType,ticket.getSeatType())
-                        .eq(SeatDO::getStartStation,routeDTO.getStartStation())
-                        .eq(SeatDO::getEndStation,routeDTO.getEndStation())
-                        .eq(SeatDO::getCarriageNumber,ticket.getCarriageNumber())
-                        .eq(SeatDO::getSeatNumber,ticket.getSeatNumber())
-                        .eq(SeatDO::getSeatStatus,0);
+                        .eq(SeatDO::getTrainId, trainId)
+                        .eq(SeatDO::getSeatType, ticket.getSeatType())
+                        .eq(SeatDO::getStartStation, routeDTO.getStartStation())
+                        .eq(SeatDO::getEndStation, routeDTO.getEndStation())
+                        .eq(SeatDO::getCarriageNumber, ticket.getCarriageNumber())
+                        .eq(SeatDO::getSeatNumber, ticket.getSeatNumber())
+                        .eq(SeatDO::getSeatStatus, 0);
                 SeatDO updateSeatDO = SeatDO.builder()
                         .seatStatus(SeatStatusEnum.LOCKED.getCode())
                         .build();
                 int update = seatMapper.update(updateSeatDO, updateWrapper);
 //                更新成功，删除缓存,没有验证
-                if (update>0){
+                if (update > 0) {
                     String keyprefix = String.join(trainId, routeDTO.getStartStation(), routeDTO.getEndStation());
                     String key = REMAINTICKETOFSEAT_TRAIN + keyprefix;
-                    HashOperations<String,Integer,Integer> hashOperations = cache.getInstance().opsForHash();
-                    hashOperations.delete(key,ticket.getSeatType());
+                    HashOperations<String, Integer, Integer> hashOperations = cache.getInstance().opsForHash();
+                    hashOperations.delete(key, ticket.getSeatType());
                 }
 
             }
@@ -143,23 +146,22 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
      * @param trainId                    列车 ID
      * @param departure                  出发站
      * @param arrival                    到达站
-     * @param trainPurchaseTicketResults 乘车人以及座位信息
+     * @param seatTypes                 座位类型
      */
     @Override
-    public void unlock(String trainId, String departure, String arrival, List<TrainPurchaseTicketRespDTO> trainPurchaseTicketResults) {
+    public void unlock(String trainId, String departure, String arrival, Integer seatTypes) {
         List<RouteDTO> routeDTOS = trainStationService.listTakeoutTrainStationRoute(trainId, departure, arrival);
         for (RouteDTO routeDTO : routeDTOS) {
-            for (TrainPurchaseTicketRespDTO ticket : trainPurchaseTicketResults) {
-                LambdaUpdateWrapper<SeatDO> updateWrapper = Wrappers.lambdaUpdate(SeatDO.class)
-                        .eq(SeatDO::getTrainId,trainId)
-                        .eq(SeatDO::getSeatType,ticket.getSeatType())
-                        .eq(SeatDO::getStartStation,routeDTO.getStartStation())
-                        .eq(SeatDO::getEndStation,routeDTO.getEndStation());
-                SeatDO updateSeatDO = SeatDO.builder()
-                        .seatStatus(SeatStatusEnum.AVAILABLE.getCode())
-                        .build();
-                seatMapper.update(updateSeatDO, updateWrapper);
-            }
+            LambdaUpdateWrapper<SeatDO> updateWrapper = Wrappers.lambdaUpdate(SeatDO.class)
+                    .eq(SeatDO::getTrainId, trainId)
+                    .eq(SeatDO::getSeatType, seatTypes)
+                    .eq(SeatDO::getStartStation, routeDTO.getStartStation())
+                    .eq(SeatDO::getEndStation, routeDTO.getEndStation());
+            SeatDO updateSeatDO = SeatDO.builder()
+                    .seatStatus(SeatStatusEnum.AVAILABLE.getCode())
+                    .build();
+            seatMapper.update(updateSeatDO, updateWrapper);
+
         }
     }
 }

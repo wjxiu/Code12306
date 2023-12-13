@@ -23,9 +23,7 @@ public class FeignRequestInterceptor implements RequestInterceptor {
 
     @Override
     public void apply(RequestTemplate template) {
-
         HttpServletRequest httpServletRequest = getHttpServletRequest();
-
         if (httpServletRequest != null) {
             //获取头信息
             Map<String, String> headers = getHeaders(httpServletRequest);

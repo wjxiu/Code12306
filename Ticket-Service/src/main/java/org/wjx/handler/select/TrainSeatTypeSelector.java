@@ -5,7 +5,9 @@ import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jboss.marshalling.cloner.ObjectClonerFactory;
 import org.springframework.stereotype.Component;
+import org.wjx.Exception.ClientException;
 import org.wjx.Exception.ServiceException;
 import org.wjx.Res;
 import org.wjx.core.SafeCache;
@@ -86,6 +88,7 @@ public class TrainSeatTypeSelector {
 
 //        远程查询乘车人的信息
         Res<List<PassengerRespDTO>> passengerList = userRemoteService.listPassengerQueryByIds(UserContext.getUserName(), list);
+        if (passengerList.getData().isEmpty())throw new ClientException("乘客不存在");
 //            查出每个座位的价钱
         actrualRes.forEach(each ->{
             PassengerRespDTO passengerRespDTO = passengerList.getData().stream().filter(pass -> Objects.equals(pass.getId(), each.getPassengerId())).findFirst().get();
