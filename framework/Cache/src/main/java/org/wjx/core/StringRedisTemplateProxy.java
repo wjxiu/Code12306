@@ -1,18 +1,13 @@
 package org.wjx.core;
 
-import com.alibaba.fastjson2.JSON;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.ListOperations;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.*;
 import org.wjx.Exception.ServiceException;
 import org.wjx.config.RedisCustomProperties;
 import org.wjx.utils.Cacheutil;
-import org.wjx.utils.FastJson2Util;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,17 +29,14 @@ public class StringRedisTemplateProxy implements SafeCache {
 
 
     @Override
-    public <T> T get(String key, Class<T> clazz) {
-        String s = redisTemplate.opsForValue().get(key);
-        if (String.class.isAssignableFrom(clazz)) {
-            return (T) s;
-        }
-        return JSON.parseObject(s, FastJson2Util.buildType(clazz));
+    public <T> T get(String key) {
+        ValueOperations<String,T> valueOperations = getInstance().opsForValue();
+        return valueOperations.get(key);
     }
 
 
     @Override
-    public void put(String key, Object value) {
+    public <T>void put(String key, T value) {
         put(key, value, redisproperties.timeOut, redisproperties.timeUnit);
     }
 
@@ -79,11 +71,9 @@ public class StringRedisTemplateProxy implements SafeCache {
         put(key, value, timeout, redisproperties.timeUnit);
     }
 
-    public void put(String key, Object value, Long timeout, TimeUnit timeUnit) {
-        if (value instanceof String) {
-            redisTemplate.opsForValue().set(key, (String) value, timeout, timeUnit);
-        } else
-            redisTemplate.opsForValue().set(key, JSON.toJSONString(value), timeout, timeUnit);
+    public <T>void put(String key, T value, Long timeout, TimeUnit timeUnit) {
+        ValueOperations<String,T> valueOperations = getInstance().opsForValue();
+        valueOperations.set(key, value, timeout, timeUnit);
     }
 
 //    @Override
@@ -115,13 +105,13 @@ public class StringRedisTemplateProxy implements SafeCache {
     }
 
     @Override
-    public <T> T get(String key, Class<T> returnType, Long timeout, CacheLoader<T> loader) {
-        return get(key, returnType, timeout, redisproperties.timeUnit, loader);
+    public <T> T get(String key,  Long timeout, CacheLoader<T> loader) {
+        return get(key,  timeout, redisproperties.timeUnit, loader);
     }
 
     @Override
-    public <T> T get(String key, Class<T> returnType, Long timeout, TimeUnit timeUnit, CacheLoader<T> loader) {
-        T value = get(key, returnType);
+    public <T> T get(String key,  Long timeout, TimeUnit timeUnit, CacheLoader<T> loader) {
+        T value = get(key);
         if (Cacheutil.isNuLLOrBlank(value)) {
             return loadAndPut(key, timeout, timeUnit, loader, false, null);
         }
@@ -130,37 +120,37 @@ public class StringRedisTemplateProxy implements SafeCache {
 
 
     @Override
-    public <T> T safeGet(String key, Class<T> clazz, long timeout,
+    public <T> T safeGet(String key, long timeout,
                          CacheLoader<T> cacheLoader,
                          RBloomFilter<String> bloomFilter,
                          CacheGetFilter<String> cacheCheckFilter,
                          CacheGetIfAbsent<String> cacheGetIfAbsent) {
-        return safeGet(key, clazz, timeout, redisproperties.timeUnit, cacheLoader, bloomFilter, cacheCheckFilter, cacheGetIfAbsent);
+        return safeGet(key, timeout, redisproperties.timeUnit, cacheLoader, bloomFilter, cacheCheckFilter, cacheGetIfAbsent);
     }
 
 
     @Override
-    public <T> T safeGet(String key, Class<T> clazz, long timeout, CacheLoader<T> cacheLoader, RBloomFilter<String> bloomFilter) {
-        return safeGet(key, clazz, timeout, redisproperties.timeUnit, cacheLoader, bloomFilter, null);
+    public <T> T safeGet(String key, long timeout, CacheLoader<T> cacheLoader, RBloomFilter<String> bloomFilter) {
+        return safeGet(key, timeout, redisproperties.timeUnit, cacheLoader, bloomFilter, null);
     }
 
     @Override
-    public <T> T safeGet(String key, Class<T> clazz, long timeout, TimeUnit timeUnit,
+    public <T> T safeGet(String key, long timeout, TimeUnit timeUnit,
                          CacheLoader<T> cacheLoader, RBloomFilter<String> bloomFilter) {
-        return safeGet(key, clazz, timeout, timeUnit, cacheLoader, bloomFilter, null);
+        return safeGet(key, timeout, timeUnit, cacheLoader, bloomFilter, null);
     }
 
     @Override
-    public <T> T safeGet(String key, Class<T> clazz, long timeout, CacheLoader<T> cacheLoader) {
-        return safeGet(key, clazz, timeout, redisproperties.timeUnit, cacheLoader, null, null);
+    public <T> T safeGet(String key, long timeout, CacheLoader<T> cacheLoader) {
+        return safeGet(key, timeout, redisproperties.timeUnit, cacheLoader, null, null);
     }
 
     @Override
-    public <T> T safeGet(String key, Class<T> clazz, long timeout, TimeUnit timeUnit, CacheLoader<T> cacheLoader) {
-        return safeGet(key, clazz, timeout, timeUnit, cacheLoader, null, null);
+    public <T> T safeGet(String key, long timeout, TimeUnit timeUnit, CacheLoader<T> cacheLoader) {
+        return safeGet(key, timeout, timeUnit, cacheLoader, null, null);
     }
 
-    public <T> List<T> safeGetForList(String key, Class<T> clazz, long timeout, TimeUnit timeUnit, CacheLoader<List<T>> cacheLoader) {
+    public <T> List<T> safeGetForList(String key, long timeout, TimeUnit timeUnit, CacheLoader<List<T>> cacheLoader) {
         ListOperations<String, T> listOperations = getInstance().opsForList();
         List<T> range = listOperations.range(key, 0, -1);
         if (range != null && !range.isEmpty()) return range;
@@ -183,36 +173,34 @@ public class StringRedisTemplateProxy implements SafeCache {
     }
 
     @Override
-    public <T> T safeGet(String key, Class<T> clazz, long timeout, TimeUnit timeUnit,
+    public <T> T safeGet(String key, long timeout, TimeUnit timeUnit,
                          CacheLoader<T> cacheLoader,
                          RBloomFilter<String> bloomFilter,
                          CacheGetFilter<String> cacheGetFilter) {
-        return safeGet(key, clazz, timeout, timeUnit, cacheLoader, bloomFilter, cacheGetFilter, null);
+        return safeGet(key, timeout, timeUnit, cacheLoader, bloomFilter, cacheGetFilter, null);
     }
 
 
     @Override
-    public void put(String key, Object value, long timeout) {
+    public <T>void put(String key, T value, long timeout) {
         put(key, value, timeout, redisproperties.timeUnit);
     }
 
     @Override
-    public void put(String key, Object value, long timeout, TimeUnit timeUnit) {
-        if (value instanceof String) {
-            redisTemplate.opsForValue().set(key, value.toString(), timeout, timeUnit);
-        } else {
-            redisTemplate.opsForValue().set(key, JSON.toJSONString(value), timeout, timeUnit);
-        }
+    public <T>void put(String key, T value, long timeout, TimeUnit timeUnit) {
+        ValueOperations<String,T> valueOperations = getInstance().opsForValue();
+        valueOperations.set(key, value, timeout, timeUnit);
+
     }
 
     @Override
-    public void safePut(String key, Object value, long timeout, RBloomFilter<String> bloomFilter) {
+    public <T>void safePut(String key, T value, long timeout, RBloomFilter<String> bloomFilter) {
         put(key, value, timeout);
         if (bloomFilter != null) bloomFilter.add(key);
     }
 
     @Override
-    public void safePut(String key, Object value, long timeout, TimeUnit timeUnit, RBloomFilter<String> bloomFilter) {
+    public <T>void safePut(String key, T value, long timeout, TimeUnit timeUnit, RBloomFilter<String> bloomFilter) {
         put(key, value, timeout, timeUnit);
         if (bloomFilter != null) bloomFilter.add(key);
     }
@@ -232,24 +220,23 @@ public class StringRedisTemplateProxy implements SafeCache {
      * 通过 布隆过滤器 cacheCheckFilter(布隆过滤器白名单) cacheGetIfAbsent 缓存为空的逻辑
      * 并且使用KEYPREFIX+key作为 key获取redis中的value
      *
+     * @param <T>
      * @param key
-     * @param clazz            返回值的类型
      * @param timeout          过期时间,默认30s
      * @param timeUnit         时间单位,默认毫秒
      * @param cacheLoader      如果缓存不存在,定义加载缓存的逻辑
      * @param bloomFilter      自定义布隆过滤器
      * @param cacheCheckFilter 过滤缓存结果
      * @param cacheGetIfAbsent 缓存查询为空的执行逻辑
-     * @param <T>
      * @return
      */
     @Override
-    public <T> T safeGet(String key, Class<T> clazz, long timeout, TimeUnit timeUnit,
+    public <T> T safeGet(String key, long timeout, TimeUnit timeUnit,
                          CacheLoader<T> cacheLoader,
                          RBloomFilter<String> bloomFilter,
                          CacheGetFilter<String> cacheCheckFilter,
                          CacheGetIfAbsent<String> cacheGetIfAbsent) {
-        T value = get(key, clazz);
+        T value = get(key);
 //        结果不为空 或者 不在布隆过滤器 或者在布隆过滤器白名单(filter,用于补充布隆过滤器不能删除的缺点)里边的
         if (!Cacheutil.isNuLLOrBlank(value)
                 || Optional.ofNullable(cacheCheckFilter).map(each -> each.filter(key)).orElse(false)
@@ -260,7 +247,7 @@ public class StringRedisTemplateProxy implements SafeCache {
         RLock lock = redissonClient.getLock(KEYPREFIX + key);
         try {
             if (lock.tryLock()) {
-                if (!Cacheutil.isNuLLOrBlank(value = get(key, clazz))) {
+                if (!Cacheutil.isNuLLOrBlank(value = get(key))) {
                     return value;
                 }
                 value = loadAndPut(key, timeout, timeUnit, cacheLoader, true, bloomFilter);

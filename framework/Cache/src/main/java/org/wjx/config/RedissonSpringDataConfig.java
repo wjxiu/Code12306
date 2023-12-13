@@ -28,17 +28,4 @@ public class RedissonSpringDataConfig {
     public RedissonConnectionFactory redissonConnectionFactory(RedissonClient redisson) {
         return new RedissonConnectionFactory(redisson);
     }
-    @Bean
-    public StringRedisTemplate stringredisTemplate(RedisConnectionFactory redisConnectionFactory){
-        StringRedisTemplate template = new StringRedisTemplate();
-        template.setConnectionFactory(redisConnectionFactory);
-        template.setKeySerializer(new StringRedisSerializer());
-//        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-//        GenericJackson2JsonRedisSerializer jsonRedisSerializer = new GenericJackson2JsonRedisSerializer();
-//        template.setValueSerializer(jsonRedisSerializer);
-//        template.setHashValueSerializer(jsonRedisSerializer);
-
-        return template;
-    }
-
 }

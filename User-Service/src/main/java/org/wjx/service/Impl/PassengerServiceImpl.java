@@ -55,7 +55,7 @@ public class PassengerServiceImpl implements PassengerService {
     @Override
     public List<PassengerActualRespDTO> listPassengerQueryByIds(String username, List<Long> ids) {
         ArrayList<PassengerActualRespDTO> res = new ArrayList<>();
-        List<PassengerDO> list = cache.safeGetForList(USER_PASSENGER_LIST + UserContext.getUserName(), PassengerDO.class, 30L, TimeUnit.DAYS, () -> {
+        List<PassengerDO> list = cache.safeGetForList(USER_PASSENGER_LIST + UserContext.getUserName(), 30L, TimeUnit.DAYS, () -> {
             LambdaQueryWrapper<PassengerDO> queryWrapper = Wrappers.lambdaQuery(PassengerDO.class).eq(PassengerDO::getUsername, username);
             return passengerMapper.selectList(queryWrapper);
         });

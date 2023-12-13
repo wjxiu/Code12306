@@ -63,7 +63,7 @@ public class RegionStationServiceImpl implements RegionStationService {
      */
     @Override
     public List<StationQueryRespDTO> listAllStation() {
-        return safeCache.safeGet(STATION_ALL, List.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS,
+        return safeCache.safeGet(STATION_ALL, ADVANCE_TICKET_DAY, TimeUnit.DAYS,
                 () -> {
                     List<StationDO> stationDOS = stationMapper.selectList(new QueryWrapper<StationDO>());
                     return BeanUtil.convertToList(stationDOS, StationQueryRespDTO.class);
@@ -71,7 +71,7 @@ public class RegionStationServiceImpl implements RegionStationService {
     }
 
     private List<RegionStationQueryRespDTO> safeGetRegionStation(String key, CacheLoader<String> loader, String param) {
-        String s = safeCache.get(key, String.class);
+        String s = safeCache.get(key);
         List<RegionStationQueryRespDTO> res = JSON.parseArray(s, RegionStationQueryRespDTO.class);
         if (!CollUtil.isEmpty(res)) {
             return res;

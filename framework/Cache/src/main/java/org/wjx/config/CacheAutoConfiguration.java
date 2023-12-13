@@ -5,6 +5,7 @@ import org.redisson.api.RBloomFilter;
 import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.wjx.RedisKeyValueSerializer;
@@ -15,8 +16,6 @@ import org.wjx.core.StringRedisTemplateProxy;
  * @author xiu
  * @create 2023-11-26 20:41
  */
-//@Configuration
-//@EnableAutoConfiguration(exclude = {DataSourceAutoConfiguration.class})
 @RequiredArgsConstructor
 public class CacheAutoConfiguration {
 
@@ -32,9 +31,10 @@ public class CacheAutoConfiguration {
                                           StringRedisTemplate template,
                                           RedissonClient redissonClient){
         template.setKeySerializer(redisKeyValueSerializer);
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        template.setHashKeySerializer(new GenericJackson2JsonRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        GenericJackson2JsonRedisSerializer genericJackson2JsonRedisSerializer = new GenericJackson2JsonRedisSerializer();
+        template.setValueSerializer(genericJackson2JsonRedisSerializer);
+        template.setHashKeySerializer(genericJackson2JsonRedisSerializer);
+        template.setHashValueSerializer(genericJackson2JsonRedisSerializer);
         return  new StringRedisTemplateProxy(template, redisDistributedProperties, redissonClient);
     }
     @Bean

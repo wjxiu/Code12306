@@ -21,7 +21,6 @@ import org.wjx.Exception.ClientException;
 import org.wjx.Exception.ServiceException;
 import org.wjx.Res;
 import org.wjx.common.TicketChainMarkEnum;
-import org.wjx.core.CacheLoader;
 import org.wjx.core.SafeCache;
 import org.wjx.dao.DO.*;
 import org.wjx.dao.mapper.*;
@@ -147,7 +146,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         HashSet<Integer> typeClassSetRes = new HashSet<>();
         StringBuffer sb = new StringBuffer();
         String starttime = DateUtil.format(requestParam.getDepartureDate(), "yyyy-MM-dd");
-        List<TrainStationRelationDO> trainStationRelationDOS = cache.safeGetForList(TRAIN_PASS_ALL_CITY + String.join("-", starttime, startregion, endregion), TrainStationRelationDO.class,
+        List<TrainStationRelationDO> trainStationRelationDOS = cache.safeGetForList(TRAIN_PASS_ALL_CITY + String.join("-", starttime, startregion, endregion),
                 ADVANCE_TICKET_DAY, TimeUnit.DAYS,
                 () -> {
                     return trainStationRelationMapper.queryByParam(starttime, startregion, endregion);
@@ -158,7 +157,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
             ticketListDTO.setTrainId(tstationDO.getTrainId().toString());
-            TrainDO trainDO=  cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), TrainDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+            TrainDO trainDO=  cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                 return trainMapper.selectById(ticketListDTO.getTrainId());
             });
             sb.append(trainDO.getTrainBrand()).append(",");
@@ -167,7 +166,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         List<Long> list1 = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
         String collect = list1.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
 //        这里获取到座位信息
-        List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, CarriageDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+        List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
             return carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
                     .in(CarriageDO::getTrainId, list1)
                     .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount));
@@ -204,7 +203,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             String trainId = ticketListDTO.getTrainId();
 //           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
 //           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
-            List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, TrainStationDO.class, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
+            List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                 return trainStationMapper.queryBytrainId(trainId);
             });
             ArrayList<String[]> startAndEndStation = geneListOfCache(trainStationDOS);
@@ -335,7 +334,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         String trainId = requestParam.getTrainId();
         TrainDO trainDO = cache.safeGet(
                 "frame.redisticket-service:train:" + trainId,
-                TrainDO.class,
                 ADVANCE_TICKET_DAY,
                 TimeUnit.DAYS, () -> trainMapper.selectById(trainId));
 //        选出座位
