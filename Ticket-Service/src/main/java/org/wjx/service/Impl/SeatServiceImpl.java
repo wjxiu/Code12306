@@ -6,7 +6,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.stereotype.Service;
+import org.wjx.core.SafeCache;
 import org.wjx.dao.DO.RouteDTO;
 import org.wjx.dao.DO.SeatDO;
 import org.wjx.dao.DO.TrainStationPriceDO;
@@ -18,6 +20,8 @@ import org.wjx.service.TrainStationService;
 
 import java.util.List;
 
+import static org.wjx.constant.RedisKeyConstant.REMAINTICKETOFSEAT_TRAIN;
+
 /**
  * @author xiu
  * @create 2023-11-30 9:42
@@ -27,6 +31,7 @@ import java.util.List;
 public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements SeatService  {
     final SeatMapper seatMapper;
     final TrainStationService trainStationService;
+    final SafeCache cache;
     /**
      * 获取列车车厢中可用座位的座位号集合
      *
@@ -94,7 +99,7 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
 
     /**
      * 锁定选中以及沿途车票状态
-     *
+     *锁定后对应的座位数量缓存删除
      * @param trainId                     列车 ID
      * @param departure                   出发站
      * @param arrival                     到达站
@@ -119,7 +124,15 @@ public class SeatServiceImpl  extends ServiceImpl<SeatMapper, SeatDO> implements
                 SeatDO updateSeatDO = SeatDO.builder()
                         .seatStatus(SeatStatusEnum.LOCKED.getCode())
                         .build();
-                seatMapper.update(updateSeatDO, updateWrapper);
+                int update = seatMapper.update(updateSeatDO, updateWrapper);
+//                更新成功，删除缓存,没有验证
+                if (update>0){
+                    String keyprefix = String.join(trainId, routeDTO.getStartStation(), routeDTO.getEndStation());
+                    String key = REMAINTICKETOFSEAT_TRAIN + keyprefix;
+                    HashOperations<String,Integer,Integer> hashOperations = cache.getInstance().opsForHash();
+                    hashOperations.delete(key,ticket.getSeatType());
+                }
+
             }
         }
     }
