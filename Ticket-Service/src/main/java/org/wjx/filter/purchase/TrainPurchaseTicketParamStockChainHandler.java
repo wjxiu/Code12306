@@ -16,9 +16,11 @@ import org.wjx.handler.DTO.PurchaseTicketPassengerDetailDTO;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.wjx.constant.RedisKeyConstant.REMAINTICKETOFSEAT_TRAIN;
+import static org.wjx.constant.SystemConstant.ADVANCE_TICKET_DAY;
 
 /**
  *  座位数量信息加载
@@ -50,18 +52,21 @@ public class TrainPurchaseTicketParamStockChainHandler implements TrainPurchaseT
             RedisTemplate instance = cache.getInstance();
             HashOperations<String,Integer,Integer> hashOperations = instance.opsForHash();
             for (Map.Entry<Integer, List<PurchaseTicketPassengerDetailDTO>> entry : TypeToList.entrySet()) {
-                Integer key = entry.getKey();
+                Integer type = entry.getKey();
                 List<PurchaseTicketPassengerDetailDTO> passengers = entry.getValue();
-                Integer s = hashOperations.get(REMAINTICKETOFSEAT_TRAIN+keySuffix, key);
+                String KEY = REMAINTICKETOFSEAT_TRAIN + keySuffix;
+                Integer s = hashOperations.get(KEY, type);
                 if (s==null){
 //                    这里没有保存到座位数量信息,需要查询
 //                    根据train_id,seat_type,起点,终点查询座位数量
                     log.info("查询数据库");
                     for (PurchaseTicketPassengerDetailDTO passenger : passengers) {
+
                         Integer seatType = passenger.getSeatType();
-                        Integer seatCount = seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, seatType, departure, arrival);
+                        Integer seatCount = cache.SafeGetOfHash(KEY, seatType, () -> {
+                            return seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, seatType, departure, arrival);
+                        });
                         log.info("座位信息:::{}---{}",seatType,seatCount);
-                        hashOperations.put(REMAINTICKETOFSEAT_TRAIN+keySuffix,seatType, seatCount);
                         if (seatCount <passengers.size())throw new ClientException("无余票");
                     }
                 }
