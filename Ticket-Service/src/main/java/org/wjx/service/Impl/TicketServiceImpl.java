@@ -12,15 +12,11 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.wjx.Exception.ClientException;
 import org.wjx.Exception.ServiceException;
 import org.wjx.Res;
-import org.wjx.common.TicketChainMarkEnum;
 import org.wjx.core.SafeCache;
 import org.wjx.dao.DO.*;
 import org.wjx.dao.mapper.*;
@@ -74,30 +70,30 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     final RegionMapper regionMapper;
     final SeatMapper seatMapper;
     final TrainSeatTypeSelector seatTypeSelector;
-    final AbstractFilterChainsContext filterChainsContext;
     final SeatService seatService;
 
 
     /**
      * 根据条件分页查询车票
-     *
+     * 大致流程:
+     * 0.根据编号查出对应的城市名字
+     * 1.查询train_station_relation表,查出发地-目的地的列车id,
+     * 2.根据列车id 查询carrage表,查出列车对应的座位类型
+     * 3.根据出发地-目的地查询train_station,主要获得列车站台之间的顺序
+     * 4根据站台顺序拼接二维数组(a-b-c-d-e :[[a,b],[a,c],[a,d],[a,e],[b-c]....])
+     * 5.根据列车Id,二维数组座位type,三个for循环,遍历seat表查询座位的数量,保存缓存
+     * 6.遍历上边的结果train_station_price查询对应的价格并且生成缓存
      * @param requestParam 分页查询车票请求参数
      * @return 查询车票返回结果
      */
     @Override
     @SneakyThrows
     public TicketPageQueryRespDTO pageListTicketQueryV1(TicketPageQueryReqDTO requestParam) {
-        //大致流程:
-//        1.查询train_station_relation表,查出发地-目的地的列车id,
-//        2.根据列车id 查询carrage表,查出列车对应的座位类型
-//        3.根据出发地-目的地查询train_station,主要获得列车站台之间的顺序
-//        4根据站台顺序拼接二维数组(a-b-c-d-e :[[a,b],[a,c],[a,d],[a,e],[b-c]....])
-//        5.根据列车Id,二维数组座位type,三个for循环,遍历seat表查询座位的数量,保存缓存
         TicketPageQueryRespDTO ticketPageQueryRespDTO = gene(requestParam);
         List<TicketListDTO> gene = ticketPageQueryRespDTO.getTrainList();
         ticketPageQueryRespDTO.setTrainList(gene);
-        ticketPageQueryRespDTO.setDepartureStationList(parseDepartureStationList(gene));
-        ticketPageQueryRespDTO.setArrivalStationList(parseArrivalStationList(gene));
+        ticketPageQueryRespDTO.setDepartureStationList(gene.stream().map(TicketListDTO::getDeparture).collect(Collectors.toSet()).stream().toList());
+        ticketPageQueryRespDTO.setArrivalStationList(gene.stream().map(TicketListDTO::getArrival).collect(Collectors.toSet()).stream().toList());
         setPrice(ticketPageQueryRespDTO);
         return ticketPageQueryRespDTO;
     }
@@ -137,23 +133,26 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * @return
      */
     private TicketPageQueryRespDTO gene(TicketPageQueryReqDTO requestParam) {
+//        第0步-------开始
         String startregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getFromStation(), () -> {
             return regionMapper.selectRegionNameByCode(requestParam.getFromStation());
         });
         String endregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getToStation(), () -> {
             return regionMapper.selectRegionNameByCode(requestParam.getToStation());
         });
+//        第0步-------结束
         TicketPageQueryRespDTO ticketPageQueryRespDTO = new TicketPageQueryRespDTO();
         HashSet<Integer> typeClassSetRes = new HashSet<>();
-        StringBuffer sb = new StringBuffer();
+        HashSet<Integer> TrainBrandSet = new HashSet<>();
         String starttime = DateUtil.format(requestParam.getDepartureDate(), "yyyy-MM-dd");
+//        第一步-----开始
         List<TrainStationRelationDO> trainStationRelationDOS = cache.safeGetForList(TRAIN_PASS_ALL_CITY + String.join("-", starttime, startregion, endregion),
                 ADVANCE_TICKET_DAY, TimeUnit.DAYS,
                 () -> {
                     return trainStationRelationMapper.queryByParam(starttime, startregion, endregion);
                 });
-//        找到了符合要求的列车
         ArrayList<TicketListDTO> ticketListDTOS = new ArrayList<>();
+//        optimize 换成hash缓存
         for (TrainStationRelationDO tstationDO : trainStationRelationDOS) {
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
@@ -161,21 +160,23 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             TrainDO trainDO = cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                 return trainMapper.selectById(ticketListDTO.getTrainId());
             });
-            sb.append(trainDO.getTrainBrand()).append(",");
+            TrainBrandSet.addAll(Arrays.stream(trainDO.getTrainBrand().split(",")).map(Integer::parseInt).toList());
             trainDoToTicketListDTO(ticketListDTO, tstationDO, trainDO);
         }
-        List<Long> list1 = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
-        String collect = list1.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
-//        这里获取到座位信息
+//        第一步-----结束 找到了符合要求的列车
+        List<Long> trainIds = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
+        String collect = trainIds.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
+//       optimize 拆开换成hash 这里获取到座位信息
         List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-            return carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
-                    .in(CarriageDO::getTrainId, list1)
+            return   carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
+                    .in(CarriageDO::getTrainId, trainIds)
                     .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount));
         });
+//        第二步-----开始
         Map<String, Set<Integer>> trainToType = carriageDOS.stream()
                 .collect(Collectors.groupingBy(a -> a.getTrainId().toString(), Collectors.mapping(CarriageDO::getCarriageType, Collectors.toSet())));
         GeneCacheOfTicketForParchase(ticketListDTOS, trainToType);
-
+//        第二步-----结束
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             ArrayList<SeatClassDTO> seatclasses = new ArrayList<>();
             Set<Integer> seatTypeSet = trainToType.get(ticketListDTO.getTrainId());
@@ -191,7 +192,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         setQuantity(carriageDOS, ticketListDTOS);
         ticketPageQueryRespDTO.setTrainList(ticketListDTOS);
         ticketPageQueryRespDTO.setSeatClassTypeList(typeClassSetRes.stream().toList());
-        ticketPageQueryRespDTO.setTrainBrandList(Arrays.stream(sb.toString().split(",")).map(Integer::parseInt).distinct().toList());
+        ticketPageQueryRespDTO.setTrainBrandList(TrainBrandSet.stream().toList());
         return ticketPageQueryRespDTO;
     }
 
@@ -200,7 +201,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * 将座位信息保存到缓存中
      */
     private void GeneCacheOfTicketForParchase(ArrayList<TicketListDTO> ticketListDTOS, Map<String, Set<Integer>> trainToType) {
-        HashOperations<String, Integer, Integer> hashOperations = cache.getInstance().opsForHash();
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             String trainId = ticketListDTO.getTrainId();
 //           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
@@ -262,14 +262,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         }
     }
 
-    private List<String> parseDepartureStationList(List<TicketListDTO> gene) {
-        return gene.stream().map(TicketListDTO::getDeparture).collect(Collectors.toSet()).stream().toList();
-    }
-
-    private List<String> parseArrivalStationList(List<TicketListDTO> gene) {
-        return gene.stream().map(TicketListDTO::getArrival).collect(Collectors.toSet()).stream().toList();
-    }
-
     private void trainDoToTicketListDTO(TicketListDTO ticketListDTO, TrainStationRelationDO stationRelationDO, TrainDO trainDO) {
         ticketListDTO.setDepartureFlag(stationRelationDO.getDepartureFlag());
         ticketListDTO.setArrivalFlag(stationRelationDO.getArrivalFlag());
@@ -286,8 +278,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         ticketListDTO.setDaysArrived(DateUtil.formatBetween(stationRelationDO.getArrivalTime(), stationRelationDO.getDepartureTime(), BetweenFormatter.Level.DAY).charAt(0) - '0');
         ticketListDTO.setSaleTime(DateUtil.format(trainDO.getSaleTime(), "yyyy-MM-dd HH:mm"));
     }
-
-
     private Map<AbstractMap.SimpleEntry<String, Integer>, Integer> groupByTrainIdAndCarriageType(List<CarriageDO> carriageDOList) {
         return carriageDOList.stream()
                 .collect(Collectors.toMap(
@@ -306,10 +296,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      */
     @Override
     public TicketPageQueryRespDTO pageListTicketQueryV2(TicketPageQueryReqDTO requestParam) {
-//        通过职责链模式过滤参数
-        chainsContext.execute(TicketChainMarkEnum.TRAIN_QUERY_FILTER.name(), requestParam);
-        StringRedisTemplate instance = (StringRedisTemplate) cache.getInstance();
-
         return null;
     }
 

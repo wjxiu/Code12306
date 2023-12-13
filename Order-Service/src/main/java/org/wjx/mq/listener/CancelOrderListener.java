@@ -43,7 +43,6 @@ public class CancelOrderListener {
             /*
                optimize
               这里报错:没有token,(暂时通过加入白名单跳过错误)
-              并且需要将车票的状态改变,和order orderitem
              */
             seatRemoteService.ResetSeatStatus(resetSeatDTOS);
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), true);
