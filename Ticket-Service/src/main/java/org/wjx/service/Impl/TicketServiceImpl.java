@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.wjx.Exception.ClientException;
@@ -158,9 +157,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 //        第一步-----开始
         List<TrainStationRelationDO> trainStationRelationDOS = cache.safeGetForList(TRAIN_PASS_ALL_CITY + String.join("-", starttime, startregion, endregion),
                 ADVANCE_TICKET_DAY, TimeUnit.DAYS,
-                () -> {
-                    return trainStationRelationMapper.queryByParam(starttime, startregion, endregion);
-                });
+                () -> trainStationRelationMapper.queryByParam(starttime, startregion, endregion));
         ArrayList<TicketListDTO> ticketListDTOS = new ArrayList<>();
 //        optimize 换成hash缓存
         for (TrainStationRelationDO tstationDO : trainStationRelationDOS) {
@@ -175,11 +172,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         List<Long> trainIds = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
         String collect = trainIds.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
 //       optimize 拆开换成hash 这里获取到座位信息
-        List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-            return carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
-                    .in(CarriageDO::getTrainId, trainIds)
-                    .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId));
-        });
+        List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
+                .in(CarriageDO::getTrainId, trainIds)
+                .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId)));
 //        第二步-----开始
         Map<String, Set<Integer>> trainToType = carriageDOS.stream()
                 .collect(Collectors.groupingBy(a -> a.getTrainId().toString(), Collectors.mapping(CarriageDO::getCarriageType, Collectors.toSet())));
@@ -218,9 +213,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             List<SeatClassDTO> seatClassList = ticketListDTO.getSeatClassList();
 //       这里可以抽出来方法    通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
 //           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
-            List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-                return trainStationMapper.queryBytrainId(trainId);
-            });
+            List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, ADVANCE_TICKET_DAY, TimeUnit.DAYS,
+                    () -> trainStationMapper.queryBytrainId(trainId));
             ArrayList<String[]> startAndEndStation = geneListOfCache(trainStationDOS);
             HashMap<Integer, Integer> typeToCount = new HashMap<>();
             for (String[] stationDOS : startAndEndStation) {
@@ -230,9 +224,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 //                optimize 可以抽取出来作为方法
                 for (Integer type : types) {
                     String KEY = REMAINTICKETOFSEAT_TRAIN + StrUtil.join("-", trainId, departureStation, arrivalStation);
-                    Integer seatCount = cache.SafeGetOfHash(KEY, type, () -> {
-                        return seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratStation, endStation);
-                    });
+                    Integer seatCount = cache.SafeGetOfHash(KEY, type,
+                            () -> seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratStation, endStation));
                     typeToCount.put(type, seatCount);
                 }
                 for (SeatClassDTO seatClassDTO : seatClassList) {
@@ -257,6 +250,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         arr.sort(Comparator.comparingInt(o -> Integer.parseInt(o.getSequence())));
         for (int i = 0; i < arr.size(); i++) {
             for (int j = i + 1; j < arr.size(); j++) {
+                if (i==j)continue;
                 res.add(new String[]{arr.get(i).getDeparture(), arr.get(j).getDeparture()});
             }
         }
@@ -309,7 +303,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         boolean b = lock.tryLock();
         if (!b) throw new ClientException("请重试");
         try {
-            return executePurchaseTickets(requestParam);
+            TicketServiceImpl bean = ApplicationContextHolder.getBean(this.getClass());
+            return bean.executePurchaseTickets(requestParam);
         } finally {
             lock.unlock();
         }
@@ -461,7 +456,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 
 
     private TicketOrderDetailRespDTO buildTicketOrderDetailRespDTO(TrainPurchaseTicketRespDTO each) {
-        TicketOrderDetailRespDTO ticketOrderDetailRespDTO = TicketOrderDetailRespDTO.builder()
+        return TicketOrderDetailRespDTO.builder()
                 .amount(each.getAmount())
                 .carriageNumber(each.getCarriageNumber())
                 .seatNumber(each.getSeatNumber())
@@ -471,11 +466,10 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 .ticketType(each.getUserType())
                 .realName(each.getRealName())
                 .build();
-        return ticketOrderDetailRespDTO;
     }
 
     private TicketOrderItemCreateRemoteReqDTO buildTicketOrderItemCreateRemoteReqDTO(TrainPurchaseTicketRespDTO each) {
-        TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = TicketOrderItemCreateRemoteReqDTO.builder()
+        return TicketOrderItemCreateRemoteReqDTO.builder()
                 .amount(each.getAmount())
                 .carriageNumber(each.getCarriageNumber())
                 .seatNumber(each.getSeatNumber())
@@ -486,7 +480,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 .ticketType(each.getUserType())
                 .realName(each.getRealName())
                 .build();
-        return orderItemCreateRemoteReqDTO;
     }
 
     private static TicketOrderCreateRemoteReqDTO buildTicketOrderCreateRemoteReqDTO(PurchaseTicketReqDTO requestParam,
