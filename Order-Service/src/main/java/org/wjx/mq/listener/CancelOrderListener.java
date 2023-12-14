@@ -35,7 +35,7 @@ public class CancelOrderListener {
     final OrderItemMapper orderItemServicemapper;
     final OrderMapper orderMapper;
 
-    //    2秒后执行取消订单操作,自动取消之后需要恢复座位状态
+    //    15分钟后执行取消订单操作,自动取消之后需要恢复座位状态
     @RabbitListener(queues = creatOrder_delayed_queue)
     public void listenCreate(DelayCloseOrderEvent delayCloseOrderEvent, Channel channel, Message message) throws IOException {
         log.info("开始取消订单");

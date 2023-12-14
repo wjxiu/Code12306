@@ -22,7 +22,7 @@ public class TrainPurchaseTicketParamHandler implements TrainPurchaseTicketChain
      */
     @Override
     public void handle(PurchaseTicketReqDTO reqParam) {
-        if (reqParam.getChooseSeats().isEmpty())return;
+        if (reqParam.getChooseSeats()==null||reqParam.getChooseSeats().isEmpty())return;
         HashMap<Integer,Integer> map=new HashMap<>();
         map.put(0,3);
         map.put(1,4);

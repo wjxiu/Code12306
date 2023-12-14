@@ -51,8 +51,7 @@ import org.wjx.utils.PageUtil;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.wjx.config.RabbitConfig.createOrder_routingkey;
-import static org.wjx.config.RabbitConfig.exchange_delayed;
+import static org.wjx.config.RabbitConfig.*;
 
 /**
  * @author xiu
@@ -137,11 +136,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * 15分钟
-     */
-    private static final int delaytime = 1 * 2 * 1000;
-
-    /**
      * 创建火车票订单
      *
      * @param requestParam
@@ -174,7 +168,7 @@ public class OrderServiceImpl implements OrderService {
             rabbitTemplate.convertAndSend(exchange_delayed, createOrder_routingkey, build,message -> {
                 //设置消息持久化
                 message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-                message.getMessageProperties().setDelay(delaytime);
+                message.getMessageProperties().setDelay(DELAYTIME);
                 return message;
             });
         } catch (Throwable ex) {

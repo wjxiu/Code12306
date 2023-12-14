@@ -55,6 +55,7 @@ public class StationCalculateUtil {
         }
         for (int i = startindex; i < endindex; i++) {
             for (int j = startindex+1; j <=endindex; j++) {
+                if (i==j)continue;
                 routeDTOS.add(new RouteDTO(stations.get(i), stations.get(j)));
             }
         }

@@ -27,5 +27,6 @@
         SELECT  train_id ,`sequence` ,departure ,arrival
         FROM t_train_station tts
         WHERE  tts.train_id =#{id}
+        order by sequence;
     </select>
 </mapper>

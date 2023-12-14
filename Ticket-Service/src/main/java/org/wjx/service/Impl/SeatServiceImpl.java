@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.stereotype.Service;
+import org.wjx.Exception.ServiceException;
 import org.wjx.core.SafeCache;
 import org.wjx.dao.DO.RouteDTO;
 import org.wjx.dao.DO.SeatDO;
@@ -112,10 +113,8 @@ public class SeatServiceImpl extends ServiceImpl<SeatMapper, SeatDO> implements 
     public void lockSeat(String trainId, String departure, String arrival, List<TrainPurchaseTicketRespDTO> trainPurchaseTicketRespList) {
         log.info("trainPurchaseTicketRespList:::{}", trainPurchaseTicketRespList);
         List<RouteDTO> routeDTOS = trainStationService.listTakeoutTrainStationRoute(trainId, departure, arrival);
-        log.info("routeDTOS::::{}", routeDTOS);
         for (RouteDTO routeDTO : routeDTOS) {
             for (TrainPurchaseTicketRespDTO ticket : trainPurchaseTicketRespList) {
-                log.info("ticket::{}", ticket);
                 LambdaUpdateWrapper<SeatDO> updateWrapper = Wrappers.lambdaUpdate(SeatDO.class)
                         .eq(SeatDO::getTrainId, trainId)
                         .eq(SeatDO::getSeatType, ticket.getSeatType())
@@ -134,6 +133,9 @@ public class SeatServiceImpl extends ServiceImpl<SeatMapper, SeatDO> implements 
                     String key = REMAINTICKETOFSEAT_TRAIN + keyprefix;
                     HashOperations<String, Integer, Integer> hashOperations = cache.getInstance().opsForHash();
                     hashOperations.delete(key, ticket.getSeatType());
+                }else{
+//                    fixme 这里正常购票，锁票不成功
+                    throw new ServiceException("锁票异常");
                 }
 
             }

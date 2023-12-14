@@ -20,6 +20,10 @@ import java.util.Map;
 public class RabbitConfig {
     @Autowired
     CachingConnectionFactory cachingConnectionFactory;
+    /**
+     * 设置订单延时关闭时间
+     */
+    public  static final int DELAYTIME = 15 * 60 * 1000;
 
 
     @Bean
