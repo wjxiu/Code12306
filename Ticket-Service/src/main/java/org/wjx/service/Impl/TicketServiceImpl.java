@@ -83,6 +83,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * 4根据站台顺序拼接二维数组(a-b-c-d-e :[[a,b],[a,c],[a,d],[a,e],[b-c]....])
      * 5.根据列车Id,二维数组座位type,三个for循环,遍历seat表查询座位的数量,保存缓存
      * 6.遍历上边的结果train_station_price查询对应的价格并且生成缓存
+     *
      * @param requestParam 分页查询车票请求参数
      * @return 查询车票返回结果
      */
@@ -168,7 +169,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         String collect = trainIds.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
 //       optimize 拆开换成hash 这里获取到座位信息
         List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-            return   carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
+            return carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
                     .in(CarriageDO::getTrainId, trainIds)
                     .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId, CarriageDO::getSeatCount));
         });
@@ -278,6 +279,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         ticketListDTO.setDaysArrived(DateUtil.formatBetween(stationRelationDO.getArrivalTime(), stationRelationDO.getDepartureTime(), BetweenFormatter.Level.DAY).charAt(0) - '0');
         ticketListDTO.setSaleTime(DateUtil.format(trainDO.getSaleTime(), "yyyy-MM-dd HH:mm"));
     }
+
     private Map<AbstractMap.SimpleEntry<String, Integer>, Integer> groupByTrainIdAndCarriageType(List<CarriageDO> carriageDOList) {
         return carriageDOList.stream()
                 .collect(Collectors.toMap(
@@ -426,23 +428,26 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     @Override
     public Boolean ResetSeatStatus(List<ResetSeatDTO> dto) {
         for (ResetSeatDTO resetSeatDTO : dto) {
-            seatService.unlock(String.valueOf(  resetSeatDTO.getTrainId()),
-                                                resetSeatDTO.getStartStation(),
-                                                resetSeatDTO.getEndStation(),
-                                                resetSeatDTO.getSeatType());
+            seatService.unlock(String.valueOf(resetSeatDTO.getTrainId()),
+                    resetSeatDTO.getStartStation(),
+                    resetSeatDTO.getEndStation(),
+                    resetSeatDTO.getSeatType());
             SeatDO convert = BeanUtil.convert(resetSeatDTO, SeatDO.class);
 //            optimize 可以设置为别的状态，之后发送到延迟队列，再改为0
             convert.setSeatStatus(0);
             int update = seatMapper.update(convert, new LambdaQueryWrapper<SeatDO>()
                     .eq(SeatDO::getSeatNumber, resetSeatDTO.getSeatNumber())
                     .eq(SeatDO::getTrainId, resetSeatDTO.getTrainId())
+                    .eq(SeatDO::getCarriageNumber, resetSeatDTO.getCarriageNumber())
                     .eq(SeatDO::getSeatType, resetSeatDTO.getSeatType()));
             if (update < 1) return false;
             // 删除缓存
             String join = String.join("-", String.valueOf(resetSeatDTO.getTrainId()),
                     resetSeatDTO.getStartStation(), resetSeatDTO.getEndStation());
+            log.info(REMAINTICKETOFSEAT_TRAIN + join);
             Boolean delete = cache.getInstance().delete(REMAINTICKETOFSEAT_TRAIN + join);
             if (Boolean.FALSE.equals(delete)) log.info("删除座位数量缓存异常");
+            log.info("-----------删除缓存成功------------");
         }
         return true;
     }
