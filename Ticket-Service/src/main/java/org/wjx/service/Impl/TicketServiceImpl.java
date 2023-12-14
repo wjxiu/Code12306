@@ -326,7 +326,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         List<TicketOrderDetailRespDTO> ticketOrderDetailResults = new ArrayList<>();
         String trainId = requestParam.getTrainId();
         TrainDO trainDO = cache.safeGet(
-                "frame.redisticket-service:train:" + trainId,
+                TRAIN_INFO_BY_TRAINID + trainId,
                 ADVANCE_TICKET_DAY,
                 TimeUnit.DAYS, () -> trainMapper.selectById(trainId));
 //        选出座位
@@ -349,8 +349,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         try {
             List<TicketOrderItemCreateRemoteReqDTO> orderItemCreateRemoteReqDTOList = new ArrayList<>();
             trainPurchaseTicketResults.forEach(each -> {
-                TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = bean.buildTicketOrderItemCreateRemoteReqDTO(each);
-                TicketOrderDetailRespDTO ticketOrderDetailRespDTO = bean.buildTicketOrderDetailRespDTO(each);
+                TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = buildTicketOrderItemCreateRemoteReqDTO(each);
+                TicketOrderDetailRespDTO ticketOrderDetailRespDTO = buildTicketOrderDetailRespDTO(each);
                 orderItemCreateRemoteReqDTOList.add(orderItemCreateRemoteReqDTO);
                 ticketOrderDetailResults.add(ticketOrderDetailRespDTO);
             });
@@ -359,7 +359,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                     .eq(TrainStationRelationDO::getDeparture, requestParam.getDeparture())
                     .eq(TrainStationRelationDO::getArrival, requestParam.getArrival());
             TrainStationRelationDO trainStationRelationDO = trainStationRelationMapper.selectOne(queryWrapper);
-            TicketOrderCreateRemoteReqDTO orderCreateRemoteReqDTO = bean.buildTicketOrderCreateRemoteReqDTO(requestParam, trainDO,
+            TicketOrderCreateRemoteReqDTO orderCreateRemoteReqDTO = buildTicketOrderCreateRemoteReqDTO(requestParam, trainDO,
                     trainStationRelationDO, orderItemCreateRemoteReqDTOList);
             ticketOrderResult = ticketOrderRemoteService.createTicketOrder(orderCreateRemoteReqDTO);
             if (!ticketOrderResult.isSuccess() || StrUtil.isBlank(ticketOrderResult.getData())) {
