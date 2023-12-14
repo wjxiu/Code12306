@@ -89,7 +89,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      *  <li>根据列车Id,二维数组座位type,三个for循环,遍历seat表查询座位的数量,保存缓存</li>
      *  <li>填充所有列车出现的车厢类型</li>
      *  <li>填充所有列车的起始站,和终点站</li>
-     *  <li>遍历上边的结果train_station_price查询对应的价格并且生成缓存</li>
+     *  <li>遍历上边的结果train_station_price查询对应的价格和线路的历时并且生成缓存</li>
      * </ol>
      * @param requestParam 分页查询车票请求参数
      * @return 查询车票返回结果
@@ -103,6 +103,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         ticketPageQueryRespDTO.setDepartureStationList(gene.stream().map(TicketListDTO::getDeparture).collect(Collectors.toSet()).stream().toList());
         ticketPageQueryRespDTO.setArrivalStationList(gene.stream().map(TicketListDTO::getArrival).collect(Collectors.toSet()).stream().toList());
         setPriceAndTime(ticketPageQueryRespDTO);
+        List<TicketListDTO> list = ticketPageQueryRespDTO.getTrainList().stream().sorted(Comparator.comparing(TicketListDTO::getDuration).reversed()).toList();
+        ticketPageQueryRespDTO.setTrainList(list);
         return ticketPageQueryRespDTO;
     }
 
@@ -112,14 +114,11 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * @param ticketPageQueryRespDTO
      */
     private void setPriceAndTime(TicketPageQueryRespDTO ticketPageQueryRespDTO) {
-        log.info("给所有结果查出票价:{}",ticketPageQueryRespDTO);
         List<TicketListDTO> trainList = ticketPageQueryRespDTO.getTrainList();
         for (TicketListDTO ticketListDTO : trainList) {
             String departure = ticketListDTO.getDeparture();
             String arrival = ticketListDTO.getArrival();
             String trainId = ticketListDTO.getTrainId();
-            log.info("起始时间{}",ticketListDTO.getDepartureTime());
-            log.info("结束时间{}",ticketListDTO.getArrivalTime());
             DateTime startDate = DateUtil.parse(ticketListDTO.getDepartureTime(), "yyyy-MM-dd HH:mm");
             DateTime endDate = DateUtil.parse(ticketListDTO.getArrivalTime(), "yyyy-MM-dd HH:mm");
             ticketListDTO.setDuration(DateUtil.formatBetween(startDate, endDate, BetweenFormatter.Level.HOUR));
