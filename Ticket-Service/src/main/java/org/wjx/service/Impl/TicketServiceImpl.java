@@ -1,6 +1,8 @@
 package org.wjx.service.Impl;
 
 import cn.hutool.core.date.BetweenFormatter;
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
@@ -78,14 +80,17 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     /**
      * 根据条件分页查询车票
      * 大致流程:
-     * 0.根据编号查出对应的城市名字
-     * 1.查询train_station_relation表,查出发地-目的地的列车id,
-     * 2.根据列车id 查询carrage表,查出列车对应的座位类型
-     * 3.根据出发地-目的地查询train_station,主要获得列车站台之间的顺序
-     * 4根据站台顺序拼接二维数组(a-b-c-d-e :[[a,b],[a,c],[a,d],[a,e],[b-c]....])
-     * 5.根据列车Id,二维数组座位type,三个for循环,遍历seat表查询座位的数量,保存缓存
-     * 6.遍历上边的结果train_station_price查询对应的价格并且生成缓存
-     *
+     * <ol>
+     *  <li>根据编号查出对应的城市名字</li>
+     *  <li>查询train_station_relation表,查出发城市-目的城市的列车id,并且获得列车对应的出发站(不是起始站)和到达站(不是终点站)</li>
+     *  <li>根据列车id列表查询carrage表,查出列车对应的座位类型</li>
+     *  <li>根据列车id列表查询train_station,主要获得列车的线路(有顺序)</li>
+     *  <li>根列车的线路生成所有可能的行程线路的起点和终点站的二维数组</li>
+     *  <li>根据列车Id,二维数组座位type,三个for循环,遍历seat表查询座位的数量,保存缓存</li>
+     *  <li>填充所有列车出现的车厢类型</li>
+     *  <li>填充所有列车的起始站,和终点站</li>
+     *  <li>遍历上边的结果train_station_price查询对应的价格并且生成缓存</li>
+     * </ol>
      * @param requestParam 分页查询车票请求参数
      * @return 查询车票返回结果
      */
@@ -97,7 +102,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         ticketPageQueryRespDTO.setTrainList(gene);
         ticketPageQueryRespDTO.setDepartureStationList(gene.stream().map(TicketListDTO::getDeparture).collect(Collectors.toSet()).stream().toList());
         ticketPageQueryRespDTO.setArrivalStationList(gene.stream().map(TicketListDTO::getArrival).collect(Collectors.toSet()).stream().toList());
-        setPrice(ticketPageQueryRespDTO);
+        setPriceAndTime(ticketPageQueryRespDTO);
         return ticketPageQueryRespDTO;
     }
 
@@ -106,12 +111,20 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      *
      * @param ticketPageQueryRespDTO
      */
-    private void setPrice(TicketPageQueryRespDTO ticketPageQueryRespDTO) {
+    private void setPriceAndTime(TicketPageQueryRespDTO ticketPageQueryRespDTO) {
+        log.info("给所有结果查出票价:{}",ticketPageQueryRespDTO);
         List<TicketListDTO> trainList = ticketPageQueryRespDTO.getTrainList();
         for (TicketListDTO ticketListDTO : trainList) {
             String departure = ticketListDTO.getDeparture();
             String arrival = ticketListDTO.getArrival();
             String trainId = ticketListDTO.getTrainId();
+            log.info("起始时间{}",ticketListDTO.getDepartureTime());
+            log.info("结束时间{}",ticketListDTO.getArrivalTime());
+            DateTime startDate = DateUtil.parse(ticketListDTO.getDepartureTime(), "yyyy-MM-dd HH:mm");
+            DateTime endDate = DateUtil.parse(ticketListDTO.getArrivalTime(), "yyyy-MM-dd HH:mm");
+            ticketListDTO.setDuration(DateUtil.formatBetween(startDate, endDate, BetweenFormatter.Level.HOUR));
+            long days = DateUtil.between(startDate, endDate, DateUnit.DAY);
+            ticketListDTO.setDaysArrived((int) days);
             for (SeatClassDTO seatClassDTO : ticketListDTO.getSeatClassList()) {
                 Integer price = cache.SafeGetOfHash(TRAIN_PRICE_HASH +
                         String.join("-", trainId, departure, arrival), seatClassDTO.getType(), () -> {
@@ -274,8 +287,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         ticketListDTO.setTrainTags(Arrays.stream(trainDO.getTrainTag().split(",")).toList());
         ticketListDTO.setTrainBrand(trainDO.getTrainBrand());
         ticketListDTO.setDeparture(stationRelationDO.getDeparture());
-        ticketListDTO.setArrivalTime(DateUtil.format(stationRelationDO.getArrivalTime(), "yyyy-MM-dd HH:mm"));
-        ticketListDTO.setDepartureTime(DateUtil.format(stationRelationDO.getDepartureTime(), "yyyy-MM-dd HH:mm"));
+        ticketListDTO.setArrivalTime(DateUtil.format(trainDO.getArrivalTime(), "yyyy-MM-dd HH:mm"));
+        ticketListDTO.setDepartureTime(DateUtil.format(trainDO.getDepartureTime(), "yyyy-MM-dd HH:mm"));
         ticketListDTO.setSaleStatus(trainDO.getSaleStatus());
         ticketListDTO.setDuration(DateUtil.formatBetween(stationRelationDO.getArrivalTime(), stationRelationDO.getDepartureTime(), BetweenFormatter.Level.HOUR));
         ticketListDTO.setDaysArrived(DateUtil.formatBetween(stationRelationDO.getArrivalTime(), stationRelationDO.getDepartureTime(), BetweenFormatter.Level.DAY).charAt(0) - '0');
