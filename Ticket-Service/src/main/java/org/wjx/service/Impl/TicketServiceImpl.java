@@ -65,12 +65,10 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     final SafeCache cache;
     final RedissonClient redissonClient;
     final TrainStationRelationMapper trainStationRelationMapper;
-    final TrainMapper trainMapper;
     final TicketOrderRemoteService ticketOrderRemoteService;
     final TrainStationMapper trainStationMapper;
     final CarrageMapper carrageMapper;
     final TrainStationPriceMapper priceMapper;
-    final RegionMapper regionMapper;
     final SeatMapper seatMapper;
     final TrainSeatTypeSelector seatTypeSelector;
     final SeatService seatService;
@@ -169,9 +167,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             TicketListDTO ticketListDTO = new TicketListDTO();
             ticketListDTOS.add(ticketListDTO);
             ticketListDTO.setTrainId(tstationDO.getTrainId().toString());
-            TrainDO trainDO = cache.safeGet(TRAIN_INFO_BY_TRAINID + ticketListDTO.getTrainId(), ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-                return trainMapper.selectById(ticketListDTO.getTrainId());
-            });
+            TrainDO trainDO = trainService.getCacheTrainByTrainId(ticketListDTO.getTrainId());
             TrainBrandSet.addAll(Arrays.stream(trainDO.getTrainBrand().split(",")).map(Integer::parseInt).toList());
             trainDoToTicketListDTO(ticketListDTO, tstationDO, trainDO);
         }
@@ -187,7 +183,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 //        第二步-----开始
         Map<String, Set<Integer>> trainToType = carriageDOS.stream()
                 .collect(Collectors.groupingBy(a -> a.getTrainId().toString(), Collectors.mapping(CarriageDO::getCarriageType, Collectors.toSet())));
-
 //        第二步-----结束
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             ArrayList<SeatClassDTO> seatclasses = new ArrayList<>();
@@ -287,20 +282,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         ticketListDTO.setDaysArrived(DateUtil.formatBetween(stationRelationDO.getArrivalTime(), stationRelationDO.getDepartureTime(), BetweenFormatter.Level.DAY).charAt(0) - '0');
         ticketListDTO.setSaleTime(DateUtil.format(trainDO.getSaleTime(), "yyyy-MM-dd HH:mm"));
     }
-
-    private Map<AbstractMap.SimpleEntry<String, Integer>, Integer> groupByTrainIdAndCarriageType(List<CarriageDO> carriageDOList) {
-        return carriageDOList.stream()
-                .collect(Collectors.toMap(
-                        carriage -> new AbstractMap.SimpleEntry<>(carriage.getTrainId().toString(), carriage.getCarriageType()),
-                        CarriageDO::getSeatCount,
-                        Integer::sum
-                ));
-    }
-
     /**
      * todo 跳过
      * 根据条件分页查询车票(高性能)
-     *
      * @param requestParam 分页查询车票请求参数
      * @return 查询车票返回结果
      */
@@ -333,7 +317,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 
     @Transactional(rollbackFor = Throwable.class)
     public TicketPurchaseRespDTO executePurchaseTickets(PurchaseTicketReqDTO requestParam) {
-        List<TicketOrderDetailRespDTO> ticketOrderDetailResults = new ArrayList<>();
         String trainId = requestParam.getTrainId();
         TrainDO trainDO = trainService.getCacheTrainByTrainId(trainId);
 //        选出座位
@@ -353,21 +336,20 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 //        保存车票
         bean.saveBatch(ticketDOList);
         Res<String> ticketOrderResult;
+        List<TicketOrderDetailRespDTO> ticketOrderDetailResults;
         try {
-            List<TicketOrderItemCreateRemoteReqDTO> orderItemCreateRemoteReqDTOList = new ArrayList<>();
-            trainPurchaseTicketResults.forEach(each -> {
-                TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = buildTicketOrderItemCreateRemoteReqDTO(each);
-                TicketOrderDetailRespDTO ticketOrderDetailRespDTO = buildTicketOrderDetailRespDTO(each);
-                orderItemCreateRemoteReqDTOList.add(orderItemCreateRemoteReqDTO);
-                ticketOrderDetailResults.add(ticketOrderDetailRespDTO);
-            });
+            List<TicketOrderItemCreateRemoteReqDTO> orderItemCreateRemoteReqDTOList = trainPurchaseTicketResults.stream()
+                    .map(this::buildTicketOrderItemCreateRemoteReqDTO)
+                    .collect(Collectors.toList());
+            ticketOrderDetailResults = trainPurchaseTicketResults.stream()
+                    .map(this::buildTicketOrderDetailRespDTO)
+                    .collect(Collectors.toList());
             LambdaQueryWrapper<TrainStationRelationDO> queryWrapper = Wrappers.lambdaQuery(TrainStationRelationDO.class)
                     .eq(TrainStationRelationDO::getTrainId, trainId)
                     .eq(TrainStationRelationDO::getDeparture, requestParam.getDeparture())
                     .eq(TrainStationRelationDO::getArrival, requestParam.getArrival());
             TrainStationRelationDO trainStationRelationDO = trainStationRelationMapper.selectOne(queryWrapper);
-            TicketOrderCreateRemoteReqDTO orderCreateRemoteReqDTO = buildTicketOrderCreateRemoteReqDTO(requestParam, trainDO,
-                    trainStationRelationDO, orderItemCreateRemoteReqDTOList);
+            TicketOrderCreateRemoteReqDTO orderCreateRemoteReqDTO = buildTicketOrderCreateRemoteReqDTO(requestParam, trainDO, trainStationRelationDO, orderItemCreateRemoteReqDTOList);
             ticketOrderResult = ticketOrderRemoteService.createTicketOrder(orderCreateRemoteReqDTO);
             if (!ticketOrderResult.isSuccess() || StrUtil.isBlank(ticketOrderResult.getData())) {
                 log.error("订单服务调用失败，返回结果：{}", ticketOrderResult.getMessage());
@@ -377,9 +359,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             log.error("远程调用订单服务创建错误，请求参数：{}", JSON.toJSONString(requestParam), ex);
             throw ex;
         }
-        RedisTemplate instance = cache.getInstance();
-        HashOperations<String, Integer, Integer> hashOperations = instance.opsForHash();
-        //todo 购票成功后也需要删除缓存
+        HashOperations<String, Integer, Integer> hashOperations = cache.getInstance().opsForHash();
 //      获取列车Id,获取出发点 到达点，生成直达线路数组
 //        获取座位类型，删除对应的缓存
         for (TicketOrderDetailRespDTO ticketOrderDetailResult : ticketOrderDetailResults) {
@@ -390,7 +370,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 String key = String.join("-", trainId, startStation, endStation);
                 log.info("缓存key:{}", REMAINTICKETOFSEAT_TRAIN + key);
                 Long delete = hashOperations.delete(REMAINTICKETOFSEAT_TRAIN + key, seatType);
-                if (delete < 1) log.info("购票缓存删除失败");
+                if (delete < 1)throw new ServiceException("购票缓存删除失败");
                 else log.info("购票缓存删除成功");
             }
         }
@@ -465,7 +445,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                     .eq(SeatDO::getSeatType, resetSeatDTO.getSeatType()));
             if (update < 1) return false;
             // 删除缓存，不不只是一个，而是多个，删除经过的车站缓存
-            //optimize 换为decrease缓存的车票数量，而不是全部删除
             List<RouteDTO> routeDTOS = trainStationService.listTakeoutTrainStationRoute(String.valueOf(resetSeatDTO.getTrainId()), resetSeatDTO.getStartStation(),
                     resetSeatDTO.getEndStation());
             for (RouteDTO routeDTO : routeDTOS) {
@@ -481,7 +460,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     }
 
 
-    private static TicketOrderDetailRespDTO buildTicketOrderDetailRespDTO(TrainPurchaseTicketRespDTO each) {
+    private TicketOrderDetailRespDTO buildTicketOrderDetailRespDTO(TrainPurchaseTicketRespDTO each) {
         TicketOrderDetailRespDTO ticketOrderDetailRespDTO = TicketOrderDetailRespDTO.builder()
                 .amount(each.getAmount())
                 .carriageNumber(each.getCarriageNumber())
@@ -495,7 +474,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         return ticketOrderDetailRespDTO;
     }
 
-    private static TicketOrderItemCreateRemoteReqDTO buildTicketOrderItemCreateRemoteReqDTO(TrainPurchaseTicketRespDTO each) {
+    private TicketOrderItemCreateRemoteReqDTO buildTicketOrderItemCreateRemoteReqDTO(TrainPurchaseTicketRespDTO each) {
         TicketOrderItemCreateRemoteReqDTO orderItemCreateRemoteReqDTO = TicketOrderItemCreateRemoteReqDTO.builder()
                 .amount(each.getAmount())
                 .carriageNumber(each.getCarriageNumber())
