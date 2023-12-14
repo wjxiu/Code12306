@@ -124,34 +124,3 @@ public class SeatSelection {
         return null;
     }
 }
-
-class Main {
-    public static void main(String[] args) {
-        int[][] array = {
-                {1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0},
-                {1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0},
-                {1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0},
-                {1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0},
-                {1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0},
-
-        };
-        int targetCount = 1;
-
-        int[] resultIndex = findSeats(array, targetCount);
-        System.out.println(Arrays.toString(resultIndex));
-
-    }
-
-    private static int[] findSeats(int[][] array, int targetCount) {
-        for (int i = 0; i < array.length; i++) {
-            int[] col = array[i];
-            int count=0;
-            for (int j = 0; j < col.length; j++) {
-                if (col[j]==0)count++;
-                if (col[j]==1)count=0;
-                if (count==targetCount) return new int[]{i,j-targetCount+1};
-            }
-        }
-        return null;
-    }
-}

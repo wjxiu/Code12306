@@ -37,6 +37,7 @@ import org.wjx.remote.dto.TicketOrderCreateRemoteReqDTO;
 import org.wjx.remote.dto.TicketOrderItemCreateRemoteReqDTO;
 import org.wjx.service.SeatService;
 import org.wjx.service.TicketService;
+import org.wjx.service.TrainStationService;
 import org.wjx.user.core.ApplicationContextHolder;
 import org.wjx.user.core.UserContext;
 import org.wjx.utils.BeanUtil;
@@ -71,6 +72,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     final SeatMapper seatMapper;
     final TrainSeatTypeSelector seatTypeSelector;
     final SeatService seatService;
+    final TrainStationService trainStationService;
 
 
     /**
@@ -441,13 +443,18 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                     .eq(SeatDO::getCarriageNumber, resetSeatDTO.getCarriageNumber())
                     .eq(SeatDO::getSeatType, resetSeatDTO.getSeatType()));
             if (update < 1) return false;
-            // 删除缓存
-            String join = String.join("-", String.valueOf(resetSeatDTO.getTrainId()),
-                    resetSeatDTO.getStartStation(), resetSeatDTO.getEndStation());
-            log.info(REMAINTICKETOFSEAT_TRAIN + join);
-            Boolean delete = cache.getInstance().delete(REMAINTICKETOFSEAT_TRAIN + join);
-            if (Boolean.FALSE.equals(delete)) log.info("删除座位数量缓存异常");
-            log.info("-----------删除缓存成功------------");
+            // 删除缓存，不不只是一个，而是多个，删除经过的车站缓存
+            //optimize 换为decrease缓存的车票数量，而不是全部删除
+            List<RouteDTO> routeDTOS = trainStationService.listTakeoutTrainStationRoute(String.valueOf(resetSeatDTO.getTrainId()), resetSeatDTO.getStartStation(),
+                    resetSeatDTO.getEndStation());
+            for (RouteDTO routeDTO : routeDTOS) {
+                String join = String.join("-", String.valueOf(resetSeatDTO.getTrainId()),
+                        routeDTO.getStartStation(), routeDTO.getEndStation());
+                log.info(REMAINTICKETOFSEAT_TRAIN + join);
+                Boolean delete = cache.getInstance().delete(REMAINTICKETOFSEAT_TRAIN + join);
+                if (Boolean.FALSE.equals(delete)) log.info("删除座位数量缓存异常");
+                log.info("-----------删除缓存成功------------");
+            }
         }
         return true;
     }
