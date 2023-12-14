@@ -25,7 +25,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TrainStationServiceImpl implements TrainStationService {
     private final TrainStationMapper trainStationMapper;
-
     /**
      * @param trainId
      * @return
@@ -48,6 +47,7 @@ public class TrainStationServiceImpl implements TrainStationService {
      */
     @Override
     public List<RouteDTO> listTakeoutTrainStationRoute(String trainId, String departure, String arrival) {
+
         LambdaQueryWrapper<TrainStationDO> eq = new LambdaQueryWrapper<TrainStationDO>().eq(TrainStationDO::getTrainId, trainId)
                 .select(TrainStationDO::getDeparture,TrainStationDO::getSequence);
         List<TrainStationDO> trainStationDOS = trainStationMapper.selectList(eq);

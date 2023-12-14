@@ -39,9 +39,7 @@ import org.wjx.remote.TicketOrderRemoteService;
 import org.wjx.remote.dto.ResetSeatDTO;
 import org.wjx.remote.dto.TicketOrderCreateRemoteReqDTO;
 import org.wjx.remote.dto.TicketOrderItemCreateRemoteReqDTO;
-import org.wjx.service.SeatService;
-import org.wjx.service.TicketService;
-import org.wjx.service.TrainStationService;
+import org.wjx.service.*;
 import org.wjx.user.core.ApplicationContextHolder;
 import org.wjx.user.core.UserContext;
 import org.wjx.utils.BeanUtil;
@@ -77,6 +75,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     final TrainSeatTypeSelector seatTypeSelector;
     final SeatService seatService;
     final TrainStationService trainStationService;
+    final RegionService regionService;
+    final TrainService trainService;
 
 
     /**
@@ -93,6 +93,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      *  <li>填充所有列车的起始站,和终点站</li>
      *  <li>遍历上边的结果train_station_price查询对应的价格和线路的历时并且生成缓存，按照历时升序排序后返回结果</li>
      * </ol>
+     *
      * @param requestParam 分页查询车票请求参数
      * @return 查询车票返回结果
      */
@@ -150,14 +151,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * @return
      */
     private TicketPageQueryRespDTO gene(TicketPageQueryReqDTO requestParam) {
-//        第0步-------开始
-        String startregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getFromStation(), () -> {
-            return regionMapper.selectRegionNameByCode(requestParam.getFromStation());
-        });
-        String endregion = cache.SafeGetOfHash(CODE_TRAIN_NAME, requestParam.getToStation(), () -> {
-            return regionMapper.selectRegionNameByCode(requestParam.getToStation());
-        });
-//        第0步-------结束
+        String startregion = regionService.selectCacheRegionNameByCode(requestParam.getFromStation());
+        String endregion = regionService.selectCacheRegionNameByCode(requestParam.getToStation());
         TicketPageQueryRespDTO ticketPageQueryRespDTO = new TicketPageQueryRespDTO();
         HashSet<Integer> typeClassSetRes = new HashSet<>();
         HashSet<Integer> TrainBrandSet = new HashSet<>();
@@ -220,15 +215,13 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     private void GeneCacheOfTicketForParchase(ArrayList<TicketListDTO> ticketListDTOS, Map<String, Set<Integer>> trainToType) {
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             String trainId = ticketListDTO.getTrainId();
-            TrainDO trainDO = cache.safeGet(TRAIN_INFO_BY_TRAINID + trainId, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
-                return trainMapper.selectById(trainId);
-            });
+            TrainDO trainDO = trainService.getCacheTrainByTrainId(trainId);
             String stratStation = trainDO.getStartStation();
             String endStation = trainDO.getEndStation();
-            log.info("出发站点：{}",stratStation);
-            log.info("结束站点：{}",endStation);
+            log.info("出发站点：{}", stratStation);
+            log.info("结束站点：{}", endStation);
             List<SeatClassDTO> seatClassList = ticketListDTO.getSeatClassList();
-//           通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
+//       这里可以抽出来方法    通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
 //           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
             List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> {
                 return trainStationMapper.queryBytrainId(trainId);
@@ -240,13 +233,12 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 String arrivalStation = stationDOS[1];
                 Set<Integer> types = trainToType.get(trainId);
 //                optimize 可以抽取出来作为方法
-//                todo 这里保存座位信息
                 for (Integer type : types) {
                     String KEY = REMAINTICKETOFSEAT_TRAIN + StrUtil.join("-", trainId, departureStation, arrivalStation);
                     Integer seatCount = cache.SafeGetOfHash(KEY, type, () -> {
                         return seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratStation, endStation);
                     });
-                    typeToCount.put(type,seatCount);
+                    typeToCount.put(type, seatCount);
                 }
                 for (SeatClassDTO seatClassDTO : seatClassList) {
                     Integer type = seatClassDTO.getType();
@@ -276,7 +268,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         return res;
     }
 
-
+    /**
+     * trainDo转TicketListDTO
+     */
     private void trainDoToTicketListDTO(TicketListDTO ticketListDTO, TrainStationRelationDO stationRelationDO, TrainDO trainDO) {
         ticketListDTO.setDepartureFlag(stationRelationDO.getDepartureFlag());
         ticketListDTO.setArrivalFlag(stationRelationDO.getArrivalFlag());
@@ -341,10 +335,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     public TicketPurchaseRespDTO executePurchaseTickets(PurchaseTicketReqDTO requestParam) {
         List<TicketOrderDetailRespDTO> ticketOrderDetailResults = new ArrayList<>();
         String trainId = requestParam.getTrainId();
-        TrainDO trainDO = cache.safeGet(
-                TRAIN_INFO_BY_TRAINID + trainId,
-                ADVANCE_TICKET_DAY,
-                TimeUnit.DAYS, () -> trainMapper.selectById(trainId));
+        TrainDO trainDO = trainService.getCacheTrainByTrainId(trainId);
 //        选出座位
         List<TrainPurchaseTicketRespDTO> trainPurchaseTicketResults = seatTypeSelector.select(trainDO.getTrainType(), requestParam);
 //        生成车票
@@ -387,7 +378,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             throw ex;
         }
         RedisTemplate instance = cache.getInstance();
-        HashOperations<String,Integer,Integer> hashOperations = instance.opsForHash();
+        HashOperations<String, Integer, Integer> hashOperations = instance.opsForHash();
         //todo 购票成功后也需要删除缓存
 //      获取列车Id,获取出发点 到达点，生成直达线路数组
 //        获取座位类型，删除对应的缓存
@@ -396,10 +387,10 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
             for (RouteDTO routeDTO : trainStationService.listTakeoutTrainStationRoute(trainId, requestParam.getDeparture(), requestParam.getArrival())) {
                 String startStation = routeDTO.getStartStation();
                 String endStation = routeDTO.getEndStation();
-                String key=String.join("-",trainId,startStation,endStation);
-                log.info("缓存key:{}",REMAINTICKETOFSEAT_TRAIN+key);
-                Long delete = hashOperations.delete(REMAINTICKETOFSEAT_TRAIN+key, seatType);
-                if (delete<1)log.info("购票缓存删除失败");
+                String key = String.join("-", trainId, startStation, endStation);
+                log.info("缓存key:{}", REMAINTICKETOFSEAT_TRAIN + key);
+                Long delete = hashOperations.delete(REMAINTICKETOFSEAT_TRAIN + key, seatType);
+                if (delete < 1) log.info("购票缓存删除失败");
                 else log.info("购票缓存删除成功");
             }
         }
