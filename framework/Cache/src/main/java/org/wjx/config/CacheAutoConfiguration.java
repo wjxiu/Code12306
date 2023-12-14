@@ -3,6 +3,7 @@ package org.wjx.config;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RedissonClient;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +22,7 @@ public class CacheAutoConfiguration {
 
     private final RedisCustomProperties redisDistributedProperties;
     @Bean
+    @ConditionalOnMissingBean
     public RedisKeyValueSerializer redisKeySerializer() {
         String prefix = RedisCustomProperties.PREFIX;
         String prefixCharset = redisDistributedProperties.getPrefixCharset();
