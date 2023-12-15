@@ -364,9 +364,11 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 String endStation = routeDTO.getEndStation();
                 String key = String.join("-", trainId, startStation, endStation);
                 log.info("缓存key:{}", REMAINTICKETOFSEAT_TRAIN + key);
-                Long delete = hashOperations.delete(REMAINTICKETOFSEAT_TRAIN + key, seatType);
-                if (delete < 1)throw new ServiceException("购票缓存删除失败");
-                else log.info("购票缓存删除成功");
+//                optimize 修改为减少缓存
+                Long decrement = hashOperations.increment(REMAINTICKETOFSEAT_TRAIN + key, seatType, -1);
+//                Long delete = hashOperations.delete(REMAINTICKETOFSEAT_TRAIN + key, seatType);
+                if (decrement < 1)throw new ServiceException("购票缓存减少成功");
+                else log.info("购票缓存减少成功");
             }
         }
 
