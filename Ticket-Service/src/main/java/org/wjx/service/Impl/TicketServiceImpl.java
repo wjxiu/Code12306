@@ -30,6 +30,7 @@ import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.dto.req.RefundTicketReqDTO;
 import org.wjx.dto.req.TicketPageQueryReqDTO;
 import org.wjx.dto.resp.*;
+import org.wjx.enums.SeatStatusEnum;
 import org.wjx.enums.SourceEnum;
 import org.wjx.enums.TicketStatusEnum;
 import org.wjx.filter.AbstractFilterChainsContext;
@@ -41,7 +42,6 @@ import org.wjx.remote.dto.TicketOrderItemCreateRemoteReqDTO;
 import org.wjx.service.*;
 import org.wjx.user.core.ApplicationContextHolder;
 import org.wjx.user.core.UserContext;
-import org.wjx.utils.BeanUtil;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -99,10 +99,12 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     public TicketPageQueryRespDTO pageListTicketQueryV1(TicketPageQueryReqDTO requestParam) {
         TicketPageQueryRespDTO ticketPageQueryRespDTO = gene(requestParam);
         List<TicketListDTO> gene = ticketPageQueryRespDTO.getTrainList();
+        log.info("第一步查询的数据：{}",gene);
         ticketPageQueryRespDTO.setTrainList(gene);
         ticketPageQueryRespDTO.setDepartureStationList(gene.stream().map(TicketListDTO::getDeparture).collect(Collectors.toSet()).stream().toList());
         ticketPageQueryRespDTO.setArrivalStationList(gene.stream().map(TicketListDTO::getArrival).collect(Collectors.toSet()).stream().toList());
         setPriceAndTime(ticketPageQueryRespDTO);
+        log.info("第2步查询的数据：{}",ticketPageQueryRespDTO);
         List<TicketListDTO> list = ticketPageQueryRespDTO.getTrainList().stream().sorted(Comparator.comparing(TicketListDTO::getDuration).reversed()).toList();
         ticketPageQueryRespDTO.setTrainList(list);
         return ticketPageQueryRespDTO;
@@ -205,18 +207,17 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     private void GeneCacheOfTicketForParchase(ArrayList<TicketListDTO> ticketListDTOS, Map<String, Set<Integer>> trainToType) {
         for (TicketListDTO ticketListDTO : ticketListDTOS) {
             String trainId = ticketListDTO.getTrainId();
+            String departure = ticketListDTO.getDeparture();
+            String arrival = ticketListDTO.getArrival();
             TrainDO trainDO = trainService.getCacheTrainByTrainId(trainId);
             String stratStation = trainDO.getStartStation();
             String endStation = trainDO.getEndStation();
-            log.info("出发站点：{}", stratStation);
-            log.info("结束站点：{}", endStation);
             List<SeatClassDTO> seatClassList = ticketListDTO.getSeatClassList();
 //       这里可以抽出来方法    通过列车id(每一个列车出发后都不一样,列车的唯一id是车次号码)  找到列车一条线路的所有节点,
 //           列车id-开始站-经过站-type这是个参数,确定一个全部的座位号码
             List<TrainStationDO> trainStationDOS = cache.safeGetForList(TRAIN_PASS_ALL_STATION + trainId, ADVANCE_TICKET_DAY, TimeUnit.DAYS,
                     () -> trainStationMapper.queryBytrainId(trainId));
             ArrayList<String[]> startAndEndStation = geneListOfCache(trainStationDOS);
-            HashMap<Integer, Integer> typeToCount = new HashMap<>();
             for (String[] stationDOS : startAndEndStation) {
                 String departureStation = stationDOS[0];
                 String arrivalStation = stationDOS[1];
@@ -225,17 +226,25 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 for (Integer type : types) {
                     String KEY = REMAINTICKETOFSEAT_TRAIN + StrUtil.join("-", trainId, departureStation, arrivalStation);
                     Integer seatCount = cache.SafeGetOfHash(KEY, type,
-                            () -> seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, stratStation, endStation));
-                    typeToCount.put(type, seatCount);
+                            () -> seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, departureStation, arrivalStation));
+                    log.info("缓存座位key:{},座位type{} 座位数量：{}", KEY, type, seatCount);
                 }
-                for (SeatClassDTO seatClassDTO : seatClassList) {
-                    Integer type = seatClassDTO.getType();
-                    seatClassDTO.setQuantity(typeToCount.get(type));
+            }
+            Set<Integer> types = trainToType.get(trainId);
+            for (SeatClassDTO seatClassDTO : seatClassList) {
+                for (Integer type : types) {
+                    if (seatClassDTO.getType() == type) {
+//                        fixme 这里的stratStation  endStation改成 乘客出发站点和到达站点
+                        String KEY = REMAINTICKETOFSEAT_TRAIN + StrUtil.join("-", trainId, departure, arrival);
+                        Integer seatCount = cache.SafeGetOfHash(KEY, type,
+                                () -> seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, departure, arrival));
+                        seatClassDTO.setQuantity(seatCount);
+                    }
+
                 }
             }
         }
     }
-
     /**
      * 1 2 3生成下面的集合,用于生成缓存中提供给购票的数据(座位数目)
      * 1, 2
@@ -295,6 +304,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * @return 订单号
      */
     @Override
+    @Transactional(rollbackFor = Throwable.class)
     public TicketPurchaseRespDTO purchaseTicketsV1(PurchaseTicketReqDTO requestParam) {
 //        先过滤
         chainsContext.execute("TrainPurchaseTicketChainFilter", requestParam);
@@ -359,15 +369,23 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 //        获取座位类型，删除对应的缓存
         for (TicketOrderDetailRespDTO ticketOrderDetailResult : ticketOrderDetailResults) {
             Integer seatType = ticketOrderDetailResult.getSeatType();
+            String seatNumber = ticketOrderDetailResult.getSeatNumber();
+            String carriageNumber = ticketOrderDetailResult.getCarriageNumber();
             for (RouteDTO routeDTO : trainStationService.listTakeoutTrainStationRoute(trainId, requestParam.getDeparture(), requestParam.getArrival())) {
                 String startStation = routeDTO.getStartStation();
                 String endStation = routeDTO.getEndStation();
+//                并且将对应的trianId   seatnumber  seattype starstation endstation改变状态
+                SeatDO seatDO = new SeatDO();
+                seatDO.setSeatStatus(SeatStatusEnum.LOCKED.getCode());
+                int update = seatMapper.update(new SeatDO(), new LambdaQueryWrapper<SeatDO>().eq(SeatDO::getSeatType, seatType).eq(SeatDO::getTrainId, trainId)
+                        .eq(SeatDO::getStartStation, startStation).eq(SeatDO::getEndStation, endStation).eq(SeatDO::getCarriageNumber, carriageNumber));
+                if (update<1)throw new ServiceException("当前座位已经被抢占");
                 String key = String.join("-", trainId, startStation, endStation);
                 log.info("缓存key:{}", REMAINTICKETOFSEAT_TRAIN + key);
-//                optimize 修改为减少缓存
+//                 修改为减少缓存
                 Long decrement = hashOperations.increment(REMAINTICKETOFSEAT_TRAIN + key, seatType, -1);
 //                Long delete = hashOperations.delete(REMAINTICKETOFSEAT_TRAIN + key, seatType);
-                if (decrement < 1)throw new ServiceException("购票缓存减少成功");
+                if (decrement < 1)throw new ServiceException("购票缓存减少失败");
                 else log.info("购票缓存减少成功");
             }
         }
@@ -428,19 +446,11 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     @Override
     public Boolean ResetSeatStatus(List<ResetSeatDTO> dto) {
         for (ResetSeatDTO resetSeatDTO : dto) {
-            seatService.unlock(String.valueOf(resetSeatDTO.getTrainId()),
+            Integer unlock = seatService.unlock(String.valueOf(resetSeatDTO.getTrainId()),
                     resetSeatDTO.getStartStation(),
                     resetSeatDTO.getEndStation(),
                     resetSeatDTO.getSeatType());
-            SeatDO convert = BeanUtil.convert(resetSeatDTO, SeatDO.class);
-//            optimize 可以设置为别的状态，之后发送到延迟队列，再改为0
-            convert.setSeatStatus(0);
-            int update = seatMapper.update(convert, new LambdaQueryWrapper<SeatDO>()
-                    .eq(SeatDO::getSeatNumber, resetSeatDTO.getSeatNumber())
-                    .eq(SeatDO::getTrainId, resetSeatDTO.getTrainId())
-                    .eq(SeatDO::getCarriageNumber, resetSeatDTO.getCarriageNumber())
-                    .eq(SeatDO::getSeatType, resetSeatDTO.getSeatType()));
-            if (update < 1) return false;
+            if (unlock < 1) return false;
             // 删除缓存，不不只是一个，而是多个，删除经过的车站缓存
             List<RouteDTO> routeDTOS = trainStationService.listTakeoutTrainStationRoute(String.valueOf(resetSeatDTO.getTrainId()), resetSeatDTO.getStartStation(),
                     resetSeatDTO.getEndStation());
@@ -448,9 +458,10 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 String join = String.join("-", String.valueOf(resetSeatDTO.getTrainId()),
                         routeDTO.getStartStation(), routeDTO.getEndStation());
                 log.info(REMAINTICKETOFSEAT_TRAIN + join);
-                Boolean delete = cache.getInstance().delete(REMAINTICKETOFSEAT_TRAIN + join);
-                if (Boolean.FALSE.equals(delete)) log.info("删除座位数量缓存异常");
-                log.info("-----------删除缓存成功------------");
+                HashOperations hashOperations = cache.getInstance().opsForHash();
+                Long increment = hashOperations.increment(REMAINTICKETOFSEAT_TRAIN + join, resetSeatDTO.getSeatType(), 1);
+                if (Boolean.FALSE.equals(increment)) throw new ServiceException("添加座位数量缓存异常");
+                else log.info("-----------添加座位数量缓存成功------------");
             }
         }
         return true;

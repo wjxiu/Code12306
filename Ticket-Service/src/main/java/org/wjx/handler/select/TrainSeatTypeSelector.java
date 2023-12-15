@@ -85,7 +85,6 @@ public class TrainSeatTypeSelector {
             throw new ServiceException("余票不足");
         }
         List<String> list = requestParam.getPassengers().stream().map(PurchaseTicketPassengerDetailDTO::getPassengerId).toList();
-
 //        远程查询乘车人的信息
         Res<List<PassengerRespDTO>> passengerList = userRemoteService.listPassengerQueryByIds(UserContext.getUserName(), list);
         if (passengerList.getData().isEmpty())throw new ClientException("乘客不存在");

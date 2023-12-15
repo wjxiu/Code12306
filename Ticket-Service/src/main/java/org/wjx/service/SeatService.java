@@ -56,13 +56,23 @@ public interface SeatService extends IService<SeatDO> {
     void lockSeat(String trainId, String departure, String arrival, List<TrainPurchaseTicketRespDTO> trainPurchaseTicketRespList);
 
     /**
+     * 检查座位对应的线路是否全部有票
+     * @param trainId
+     * @param departureStation
+     * @param arrivalStation
+     * @param seatType
+     * @param carriageNumber
+     */
+    boolean checkLockSeat(String trainId, String departureStation, String arrivalStation, Integer seatType, String carriageNumber);
+    /**
      * 解锁选中以及沿途车票状态
      *
-     * @param trainId                    列车 ID
-     * @param departure                  出发站
-     * @param arrival                    到达站
-     * @param seatTypes                    座位类型
+     * @param trainId   列车 ID
+     * @param departure 出发站
+     * @param arrival   到达站
+     * @param seatTypes 座位类型
+     * @return
      */
-    void unlock(String trainId, String departure, String arrival, Integer seatTypes);
+    Integer unlock(String trainId, String departure, String arrival, Integer seatTypes);
 
 }

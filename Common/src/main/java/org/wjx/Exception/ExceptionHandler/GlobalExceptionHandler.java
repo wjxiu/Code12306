@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * @create 2023-11-20 21:13
  */
 @Slf4j
-@RestControllerAdvice
+//@RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(value = {AbstractException.class, ClientException.class})
     public Object handleValidatedException(HttpServletRequest request, AbstractException ex) {

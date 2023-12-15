@@ -1,12 +1,16 @@
 package org.wjx.handler;
 
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.wjx.Exception.ServiceException;
+import org.wjx.dao.DO.SeatDO;
+import org.wjx.dao.mapper.SeatMapper;
 import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.dto.resp.TrainPurchaseTicketRespDTO;
+import org.wjx.enums.SeatStatusEnum;
 import org.wjx.enums.vehicle.VehicleSeatTypeEnum;
 import org.wjx.enums.vehicle.VehicleTypeEnum;
 import org.wjx.handler.DTO.PurchaseTicketPassengerDetailDTO;
@@ -30,6 +34,7 @@ import java.util.*;
 @Slf4j
 public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchaseTicketTemplate {
     final SeatService seatService;
+    final SeatMapper seatMapper;
 
     @Override
     public String mark() {
@@ -118,7 +123,12 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
             actualSeatsMap.put(carrageNum, seatsArray);
             if (choseseats.size() == passNum) {
                 carriagesNumberSeatsMap.put(carrageNum, seatsArray);
-                break;
+//                todo 检查座位满足要求
+                if (seatService.checkLockSeat(trainId, departure, arrival, seatType, carrageNum)) {
+                    break;
+                }else{
+                    continue;
+                }
             }
 //            算出每个车厢的剩余座位数
             int count = (int) choseseats.stream().flatMapToInt(Arrays::stream).filter(a -> a == 0).count();
@@ -153,6 +163,7 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
      * 1. 尝试全部人分配同一车厢相邻座位
      * 2. 尝试分配全部人在同一个车厢
      * 3. 尝试分配不同车厢不相邻
+     * 4.如果这个座位不符合要求
      * @param requestParam
      * @param availableCarrage
      * @param trainStationCarriageRemainingTicket
@@ -165,8 +176,8 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
         String trainId = purchaserequestParam.getTrainId();
         Integer seatType = requestParam.getSeatType();
         List<PurchaseTicketPassengerDetailDTO> passengerSeatDetails = requestParam.getPassengerSeatDetails();
-        String departure = purchaserequestParam.getDeparture();
-        String arrival = purchaserequestParam.getArrival();
+        String departureStation = purchaserequestParam.getDeparture();
+        String arrivalStation = purchaserequestParam.getArrival();
         int passNum = passengerSeatDetails.size();
         //车厢号->分配的座位
         Map<String, int[][]> carriagesNumberSeatsMap = new HashMap<>();
@@ -179,7 +190,8 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
             String carragenum = availableCarrage.get(i);
             Integer remainticketeachcarriage = trainStationCarriageRemainingTicket.get(i);
             if (remainticketeachcarriage < passNum) continue;
-            List<String> seats = seatService.listAvailableSeat(trainId, carragenum, seatType, departure, arrival);
+            //fixme 查出一个有用的之后需要将涉及到的线路的票，座位改变状态
+            List<String> seats = seatService.listAvailableSeat(trainId, carragenum, seatType, departureStation, arrivalStation);
             int[][] PlaneMapOfSeats = get2DMapOfSeats(seats);
             log.info("二维地图:::{}", PlaneMapOfSeats);
             //选择的座位，第一级尝试分配相邻座位
@@ -188,7 +200,11 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
 //            匹配了,退出选择座位过程
             if (seletedSeats != null && seletedSeats.length == passNum) {
                 carriagesNumberSeatsMap.put(carragenum, seletedSeats);
-                break;
+                if (seatService.checkLockSeat(trainId,departureStation,arrivalStation,seatType,carragenum)) {
+                    break;
+                }else{
+                    continue;
+                }
             }
 //            如果当前车厢没有匹配的话,保存 车厢号->分配的座位
             carriagesNumberSeatsMap.put(carragenum, seletedSeats);
@@ -209,8 +225,10 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
                 int[][] map = actualSeatsMap.get(carriageNum);
                 int[][] selectSeat = SeatSelection.nonAdjacent(map, passNum);
                 if (selectSeat.length == passNum) {
-                    carriagesNumberSeatsMap.put(carragenum, seletedSeats);
-                    break;
+                    if (seatService.checkLockSeat(trainId,departureStation,arrivalStation,seatType,carragenum)) {
+                        carriagesNumberSeatsMap.put(carragenum, seletedSeats);
+                        break;
+                    }
                 }
             }
 //         第二级成功，退出循环
@@ -260,8 +278,10 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
         return actualResult;
     }
 
+    //fixme 这里生成的地图是错误的
     @NotNull
     private static int[][] get2DMapOfSeats(List<String> listAvailableSeat) {
+        log.info("listAvailableSeat:{}",listAvailableSeat);
         int[][] actualSeats = new int[18][5];
         for (int j = 1; j < 19; j++) {
             for (int k = 1; k < 6; k++) {
@@ -273,6 +293,7 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
                 }
             }
         }
+        log.info("地图形状：{}",Arrays.deepToString(actualSeats));
         return actualSeats;
     }
 
