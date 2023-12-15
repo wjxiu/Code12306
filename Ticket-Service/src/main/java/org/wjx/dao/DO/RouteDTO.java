@@ -11,7 +11,6 @@ import lombok.Data;
 public class RouteDTO {
     String startStation;
     String endStation;
-
     public RouteDTO(String startStation, String endStation) {
         this.startStation = startStation;
         this.endStation = endStation;

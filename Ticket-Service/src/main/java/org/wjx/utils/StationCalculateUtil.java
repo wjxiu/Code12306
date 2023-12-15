@@ -33,7 +33,7 @@ public class StationCalculateUtil {
         ArrayList<RouteDTO> routeDTOS = new ArrayList<>();
         if (!(startindex!=-1&&endindex!=-1&&endindex>startindex)) return routeDTOS;
         for (int i = startindex+1; i < stations.size(); i++) {
-            if (!Objects.equals(stations.get(i), endStation)) routeDTOS.add(new RouteDTO(stations.get(startindex), stations.get(i)));
+          routeDTOS.add(new RouteDTO(stations.get(startindex), stations.get(i)));
         }
         return routeDTOS;
     }
@@ -54,7 +54,7 @@ public class StationCalculateUtil {
             return routeDTOS;
         }
         for (int i = startindex; i < endindex; i++) {
-            for (int j = startindex+1; j <=endindex; j++) {
+            for (int j = i+1; j <=endindex; j++) {
                 if (i==j)continue;
                 routeDTOS.add(new RouteDTO(stations.get(i), stations.get(j)));
             }
@@ -64,11 +64,11 @@ public class StationCalculateUtil {
     }
 
     public static void main(String[] args) {
-        List<String> stations = Arrays.asList("A", "B", "C");
+        List<String> stations = Arrays.asList("A", "B", "C","D","E");
         String startStation = "A";
-        String endStation = "C";
+        String endStation = "E";
         System.out.println(stations);
         System.out.println(calculateDeepStation(stations, startStation, endStation));
-        System.out.println(calculateStation(stations, startStation, endStation));
+//        System.out.println(calculateStation(stations, startStation, endStation));
     }
 }

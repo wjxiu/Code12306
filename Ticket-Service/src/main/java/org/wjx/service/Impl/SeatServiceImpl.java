@@ -115,6 +115,7 @@ public class SeatServiceImpl extends ServiceImpl<SeatMapper, SeatDO> implements 
         List<RouteDTO> routeDTOS = trainStationService.listTakeoutTrainStationRoute(trainId, departure, arrival);
         for (RouteDTO routeDTO : routeDTOS) {
             for (TrainPurchaseTicketRespDTO ticket : trainPurchaseTicketRespList) {
+                log.info("路线：{}to{}",routeDTO.getStartStation(),routeDTO.getEndStation());
                 LambdaUpdateWrapper<SeatDO> updateWrapper = Wrappers.lambdaUpdate(SeatDO.class)
                         .eq(SeatDO::getTrainId, trainId)
                         .eq(SeatDO::getSeatType, ticket.getSeatType())
@@ -134,7 +135,6 @@ public class SeatServiceImpl extends ServiceImpl<SeatMapper, SeatDO> implements 
                     HashOperations<String, Integer, Integer> hashOperations = cache.getInstance().opsForHash();
                     hashOperations.delete(key, ticket.getSeatType());
                 }else{
-//                    fixme 这里正常购票，锁票不成功
                     throw new ServiceException("锁票异常");
                 }
 
