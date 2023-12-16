@@ -52,6 +52,8 @@ public class TrainStationServiceImpl implements TrainStationService {
         List<TrainStationDO> trainStationDOS = trainStationMapper.selectList(eq);
         List<String> list = trainStationDOS.stream().sorted(Comparator.comparing(TrainStationDO::getSequence)).map(TrainStationDO::getDeparture).toList();
         log.info("列车线路查询结果:{}",list);
-        return StationCalculateUtil.calculateDeepStation(list, departure, arrival);
+//        fixme 可以将calculateDeepStation改为calEffectRoute
+//        return StationCalculateUtil.calculateDeepStation(list, departure, arrival);
+        return StationCalculateUtil.calEffectRoute(list, departure, arrival);
     }
 }
