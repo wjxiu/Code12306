@@ -37,6 +37,38 @@ public class StationCalculateUtil {
         }
         return routeDTOS;
     }
+
+    /**
+     * 根据起点，终点和线路找出被干扰的区间
+     * one:找出不包含起点的
+     * 将起点前和起点后的使用单向连接
+     * two:找到除了终点以外的选择的节点
+     * 将这些节点的和后面的单向连接
+     * @return
+     */
+    public static List<RouteDTO> calEffectRoute(List<String> stations,String startStation, String endStation){
+        int startindex = stations.indexOf(startStation);
+        int endindex = stations.indexOf(endStation);
+        ArrayList<RouteDTO> routeDTOS = new ArrayList<>();
+        if (!(startindex!=-1&&endindex!=-1&&endindex>startindex)){
+            return routeDTOS;
+        }
+        List<String> front = stations.subList(0, startindex);
+        List<String> end = stations.subList(startindex+1, stations.size());
+//        one:找出不包含起点的 将起点前和起点后的使用单向连接
+        for (String fr : front) {
+            for (String e : end) {
+                routeDTOS.add(new RouteDTO(fr, e));
+            }
+        }
+        for (int i = startindex; i < endindex; i++) {
+            for (int j = i+1; j <stations.size(); j++) {
+                if (i==j)continue;
+                routeDTOS.add(new RouteDTO(stations.get(i), stations.get(j)));
+            }
+        }
+        return routeDTOS;
+    }
     /**
      * 详细计算,计算每一层
      *[A, B, C]
@@ -59,16 +91,19 @@ public class StationCalculateUtil {
                 routeDTOS.add(new RouteDTO(stations.get(i), stations.get(j)));
             }
         }
-        log.info("转换结果:{}",routeDTOS);
+        for (RouteDTO routeDTO : routeDTOS) {
+            System.out.println(routeDTO.getStartStation()+"-"+routeDTO.getEndStation());
+        }
         return routeDTOS;
     }
 
     public static void main(String[] args) {
-        List<String> stations = Arrays.asList("A", "B", "C","D","E");
-        String startStation = "A";
-        String endStation = "E";
-        System.out.println(stations);
-        System.out.println(calculateDeepStation(stations, startStation, endStation));
+        List<String> stations = Arrays.asList("A", "B", "C","D","E","F","G");
+        String startStation = "C";
+        String endStation = "G";
+//        System.out.println(stations);
+//        System.out.println(calculateDeepStation(stations, startStation, endStation));
+        calEffectRoute(stations,startStation,endStation);
 //        System.out.println(calculateStation(stations, startStation, endStation));
     }
 }

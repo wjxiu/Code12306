@@ -230,11 +230,11 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                     log.info("缓存座位key:{},座位type{} 座位数量：{}", KEY, type, seatCount);
                 }
             }
+//            这里甚至车票数量
             Set<Integer> types = trainToType.get(trainId);
             for (SeatClassDTO seatClassDTO : seatClassList) {
                 for (Integer type : types) {
                     if (seatClassDTO.getType() == type) {
-//                        fixme 这里的stratStation  endStation改成 乘客出发站点和到达站点
                         String KEY = REMAINTICKETOFSEAT_TRAIN + StrUtil.join("-", trainId, departure, arrival);
                         Integer seatCount = cache.SafeGetOfHash(KEY, type,
                                 () -> seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, departure, arrival));
