@@ -17,7 +17,7 @@ import org.wjx.filter.TokenInterceptor;
  */
 @Configuration
 @RequiredArgsConstructor
-@Import({MyFeignClientConfiguration.class})
+@Import({MyFeignClientConfiguration.class, CorsConfig.class,RequestLoggingConfig.class,MyFeignClientConfiguration.class})
 public class WebAutoConfiguration  implements WebMvcConfigurer {
     final TokenInterceptor tokenInterceptor;
     @Bean

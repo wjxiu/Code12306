@@ -8,7 +8,6 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
  * @author xiu
  * @create 2023-12-08 14:41
  */
-@Configuration
 public class MyFeignClientConfiguration {
     @Bean
     public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {

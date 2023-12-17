@@ -230,7 +230,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                     log.info("缓存座位key:{},座位type{} 座位数量：{}", KEY, type, seatCount);
                 }
             }
-//            这里甚至车票数量
+//            这里设置车票数量
             Set<Integer> types = trainToType.get(trainId);
             for (SeatClassDTO seatClassDTO : seatClassList) {
                 for (Integer type : types) {

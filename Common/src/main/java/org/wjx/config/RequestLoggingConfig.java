@@ -9,7 +9,6 @@ import org.springframework.web.filter.CommonsRequestLoggingFilter;
  * @author xiu
  * @create 2023-12-08 11:41
  */
-@Configuration
 public class RequestLoggingConfig {
 
 //    @Bean
