@@ -1,6 +1,5 @@
 package org.wjx.controller;
 
-import cn.hutool.log.Log;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;

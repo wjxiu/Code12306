@@ -16,5 +16,6 @@ public interface TrainMapper extends BaseMapper<TrainDO> {
                                       @Param("departRegion") String departRegion,
                                       @Param("arrivalRegion") String arrivalRegion
     );
+    List<TrainDO> queryTodayTrain();
 
 }

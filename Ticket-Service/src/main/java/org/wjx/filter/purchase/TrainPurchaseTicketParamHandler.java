@@ -1,7 +1,15 @@
 package org.wjx.filter.purchase;
 
+import lombok.RequiredArgsConstructor;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RedissonClient;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.wjx.Exception.ClientException;
+import org.wjx.dao.DO.TrainDO;
+import org.wjx.dao.mapper.RegionMapper;
+import org.wjx.dao.mapper.StationMapper;
+import org.wjx.dao.mapper.TrainMapper;
 import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.handler.DTO.PurchaseTicketPassengerDetailDTO;
 
@@ -13,8 +21,12 @@ import java.util.List;
  * @author xiu
  * @create 2023-12-11 20:43
  */
-@Component
+@Component@RequiredArgsConstructor
 public class TrainPurchaseTicketParamHandler implements TrainPurchaseTicketChainFilter<PurchaseTicketReqDTO>{
+    final RedissonClient redissonClient;
+    final RegionMapper regionMapper;
+    final StationMapper stationMapper;
+    final TrainMapper trainMapper;
     /**
      * 定义过滤逻辑
      *
@@ -33,6 +45,8 @@ public class TrainPurchaseTicketParamHandler implements TrainPurchaseTicketChain
             Integer i1 = map.get(pass.getSeatType());
             if (Character.toLowerCase(Character.toLowerCase(s.charAt(0))-'a')>i1)throw new ClientException("座位代号出错");
         }
+        RBloomFilter<Object> TrainIdNotNullBloomFilter = redissonClient.getBloomFilter("TrainIdNotNull");
+        if (!TrainIdNotNullBloomFilter.contains(reqParam.getTrainId())) throw new ClientException("列车不存在");
     }
     @Override
     public String mark() {
@@ -40,6 +54,13 @@ public class TrainPurchaseTicketParamHandler implements TrainPurchaseTicketChain
         return "TrainPurchaseTicketChainFilter";
     }
 
+    @Scheduled(cron = "0 0 3 * * *")
+    public void initTrainIdNotNullbloomfilter(){
+        RBloomFilter<Object> TrainIdNotNullBloomFilter = redissonClient.getBloomFilter("TrainIdNotNull");
+        for (TrainDO trainDO : trainMapper.queryTodayTrain()) {
+            TrainIdNotNullBloomFilter.add(trainDO.getId());
+        }
+    }
     /**
      * @return
      */

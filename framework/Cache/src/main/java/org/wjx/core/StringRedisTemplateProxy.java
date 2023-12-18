@@ -193,7 +193,6 @@ public class StringRedisTemplateProxy implements SafeCache {
     public <T>void put(String key, T value, long timeout, TimeUnit timeUnit) {
         ValueOperations<String,T> valueOperations = getInstance().opsForValue();
         valueOperations.set(key, value, timeout, timeUnit);
-
     }
 
     @Override

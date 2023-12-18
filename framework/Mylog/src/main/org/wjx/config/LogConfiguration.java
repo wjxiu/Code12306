@@ -15,5 +15,4 @@ public class LogConfiguration {
     public LogHandler log(){
         return new LogHandler();
     }
-
 }

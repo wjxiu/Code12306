@@ -8,7 +8,6 @@
         <option value="$PROJECT_DIR$/User-Service/pom.xml" />
         <option value="$PROJECT_DIR$/framework/pom.xml" />
         <option value="$PROJECT_DIR$/framework/Cache/pom.xml" />
-        <option value="$PROJECT_DIR$/framework/Mylog/target/maven-archiver/pom.properties" />
         <option value="$PROJECT_DIR$/framework/Cache/target/maven-archiver/pom.properties" />
       </list>
     </option>
