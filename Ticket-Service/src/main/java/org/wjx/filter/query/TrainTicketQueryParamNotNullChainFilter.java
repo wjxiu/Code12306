@@ -39,10 +39,10 @@ public class TrainTicketQueryParamNotNullChainFilter implements TicketQueryChain
         if (StringUtils.isBlank(toStation)) throw new ClientException("目的地不能为空");
         if (requestParam.getDepartureDate() == null) throw new ClientException("出发日期不能为空");
         if (StringUtils.isBlank(requestParam.getArrival())) throw new ClientException("到达站点不能为空");
-        RBloomFilter<Object> BloomFilter = redissonClient.getBloomFilter("RegionCodeNotNull");
-        RBloomFilter<Object> StationCodeNotNullBloomFilter = redissonClient.getBloomFilter("StationCodeNotNull");
-        if (!BloomFilter.contains(fromStation)||BloomFilter.contains(toStation)) throw new ClientException("出发地或目的地不存在");
-        if (!StationCodeNotNullBloomFilter.contains(requestParam.getArrival())||!StationCodeNotNullBloomFilter.contains(requestParam.getArrival())) throw new ClientException("出发站点或到达站点不存在");
+//        RBloomFilter<Object> BloomFilter = redissonClient.getBloomFilter("RegionCodeNotNull");
+//        RBloomFilter<Object> StationCodeNotNullBloomFilter = redissonClient.getBloomFilter("StationCodeNotNull");
+//        if (!BloomFilter.contains(fromStation)||BloomFilter.contains(toStation)) throw new ClientException("出发地或目的地不存在");
+//        if (!StationCodeNotNullBloomFilter.contains(requestParam.getArrival())||!StationCodeNotNullBloomFilter.contains(requestParam.getArrival())) throw new ClientException("出发站点或到达站点不存在");
     }
 
     /**

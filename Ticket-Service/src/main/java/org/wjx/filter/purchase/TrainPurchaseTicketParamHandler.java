@@ -13,8 +13,7 @@ import org.wjx.dao.mapper.TrainMapper;
 import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.handler.DTO.PurchaseTicketPassengerDetailDTO;
 
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 /**
  * 校验车票的代码是否正确
@@ -46,7 +45,7 @@ public class TrainPurchaseTicketParamHandler implements TrainPurchaseTicketChain
             if (Character.toLowerCase(Character.toLowerCase(s.charAt(0))-'a')>i1)throw new ClientException("座位代号出错");
         }
         RBloomFilter<Object> TrainIdNotNullBloomFilter = redissonClient.getBloomFilter("TrainIdNotNull");
-        if (!TrainIdNotNullBloomFilter.contains(reqParam.getTrainId())) throw new ClientException("列车不存在");
+//        if (!TrainIdNotNullBloomFilter.contains(reqParam.getTrainId())) throw new ClientException("列车不存在");
     }
     @Override
     public String mark() {
