@@ -277,8 +277,6 @@ public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchase
         }
         return actualResult;
     }
-
-    //fixme 这里生成的地图是错误的
     @NotNull
     private static int[][] get2DMapOfSeats(List<String> listAvailableSeat) {
         log.info("listAvailableSeat:{}",listAvailableSeat);

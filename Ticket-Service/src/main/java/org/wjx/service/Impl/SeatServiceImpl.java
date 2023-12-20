@@ -166,8 +166,8 @@ public class SeatServiceImpl extends ServiceImpl<SeatMapper, SeatDO> implements 
             Long l = seatMapper.selectCount(new LambdaQueryWrapper<SeatDO>().eq(SeatDO::getSeatType, seatType).eq(SeatDO::getTrainId, trainId)
                     .eq(SeatDO::getStartStation, startStation)
                     .eq(SeatDO::getEndStation, endStation)
-//                    todo 添加seatnumber
                     .eq(SeatDO::getCarriageNumber, carriageNumber));
+//                    todo 锁定失败还原之前锁定的
             if (l==0)return false;
         }
         return true;

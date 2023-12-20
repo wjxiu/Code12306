@@ -81,14 +81,14 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
      * 大致流程:
      * <ol>
      *  <li>根据编号查出对应的城市名字</li>
-     *  <li>查询train_station_relation表,查出发城市-目的城市的列车id,并且获得列车对应的出发站(不是起始站)和到达站(不是终点站)</li>
+     *  <li>查询train_station_relation表,查特定日期的出发城市-目的城市的列车id,并且获得列车对应的出发站(不是起始站)和到达站(不是终点站)</li>
      *  <li>根据列车id列表查询carrage表,查出列车对应的座位类型</li>
      *  <li>根据列车id列表查询train_station,主要获得列车的线路(有顺序)</li>
      *  <li>根列车的线路生成所有可能的行程线路的起点和终点站的二维数组</li>
      *  <li>根据列车Id,二维数组座位type,三个for循环,遍历seat表查询座位的数量,保存缓存</li>
-     *  <li>填充所有列车出现的车厢类型</li>
-     *  <li>填充所有列车的起始站,和终点站</li>
-     *  <li>遍历上边的结果train_station_price查询对应的价格和线路的历时并且生成缓存，按照历时升序排序后返回结果</li>
+     *  <li>用stream流去重列车出现的车厢类型</li>
+     *  <li>用stream流去重列车的起始站,终点站</li>
+     *  <li>遍历上边的结果 使用列车Id，出发站，目的站，座位类型，去train_station_price查询对应的价格和线路的历时并且生成缓存，按照历时升序排序后返回结果</li>
      * </ol>
      *
      * @param requestParam 分页查询车票请求参数
@@ -145,7 +145,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 
     /**
      * 生成 TicketPageQueryRespDTO的 List<TicketListDTO> 和SeatClassTypeList
-     *
      * @param requestParam 请求参数
      * @return
      */

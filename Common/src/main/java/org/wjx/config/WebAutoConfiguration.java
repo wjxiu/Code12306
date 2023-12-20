@@ -1,5 +1,8 @@
 package org.wjx.config;
 
+import com.baomidou.mybatisplus.annotation.DbType;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -10,6 +13,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.wjx.Exception.ExceptionHandler.GlobalExceptionHandler;
 import org.wjx.filter.FeignRequestInterceptor;
 import org.wjx.filter.TokenInterceptor;
+import org.wjx.mybatisConfig.MyBatisConfigration;
 
 /**
  * @author xiu
@@ -17,7 +21,7 @@ import org.wjx.filter.TokenInterceptor;
  */
 @Configuration
 @RequiredArgsConstructor
-@Import({MyFeignClientConfiguration.class, CorsConfig.class,RequestLoggingConfig.class,MyFeignClientConfiguration.class})
+@Import({MyFeignClientConfiguration.class, CorsConfig.class,RequestLoggingConfig.class,MyFeignClientConfiguration.class, MyBatisConfigration.class})
 public class WebAutoConfiguration  implements WebMvcConfigurer {
     final TokenInterceptor tokenInterceptor;
     @Bean
