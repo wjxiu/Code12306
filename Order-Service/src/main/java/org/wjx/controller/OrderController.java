@@ -34,4 +34,9 @@ public class OrderController {
     public Res<Boolean> cancelTickOrder( String  orderSn) {
         return Res.success(orderService.cancelOrCloseTickOrder(orderSn));
     }
+    @PostMapping("/api/order-service/remote/ticket/changeStatus")
+    Boolean changeOrderAndOrderItemStatus( String  orderSn,Integer beforestatus,Integer afterstatus){
+      return   orderService.changeOrderAndOrderItemStatus(orderSn,beforestatus, afterstatus);
+    }
+
 }

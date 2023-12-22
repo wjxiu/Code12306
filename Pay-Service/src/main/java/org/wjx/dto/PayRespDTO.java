@@ -5,4 +5,5 @@ package org.wjx.dto;
  * @create 2023-12-10 21:10
  */
 public class PayRespDTO {
+    public  String body;
 }

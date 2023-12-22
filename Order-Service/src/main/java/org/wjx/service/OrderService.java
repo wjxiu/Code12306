@@ -40,4 +40,6 @@ public interface OrderService {
      * @return 全部更新成功返回true, 否则返回false
      */
     public boolean cancelOrCloseTickOrder(String orderSn);
+
+    Boolean changeOrderAndOrderItemStatus(String orderSn,Integer beforestatus,Integer afterstatus);
 }

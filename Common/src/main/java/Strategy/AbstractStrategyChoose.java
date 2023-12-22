@@ -58,10 +58,8 @@ public class AbstractStrategyChoose implements ApplicationListener<ApplicationIn
             if (abstractExecuteStrategyMap.get(name) != null) {
                 throw new ServiceException(String.format("[%s] Duplicate execution policy", bean.mark()));
             }
-            log.info("choosename-----------------{}",bean.mark());
             abstractExecuteStrategyMap.put(bean.mark(), bean);
         });
-
     }
 
     public AbstractStrategyChoose() {

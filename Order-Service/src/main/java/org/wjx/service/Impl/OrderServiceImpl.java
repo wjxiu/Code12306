@@ -1,9 +1,7 @@
 package org.wjx.service.Impl;
 
 import cn.hutool.core.collection.ListUtil;
-import cn.hutool.core.text.StrBuilder;
 import cn.hutool.core.util.IdUtil;
-import cn.hutool.db.sql.Order;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -17,11 +15,9 @@ import org.redisson.api.RedissonClient;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.wjx.Exception.ServiceException;
 import org.wjx.Res;
 //import org.wjx.mq.listener.MessageSender;
-import org.wjx.annotation.Idempotent;
 import org.wjx.dao.DO.OrderDO;
 import org.wjx.dao.DO.OrderItemDO;
 import org.wjx.dao.DO.OrderItemPassengerDO;
@@ -35,7 +31,6 @@ import org.wjx.dto.req.TicketOrderPageQueryReqDTO;
 import org.wjx.dto.resp.TicketOrderDetailRespDTO;
 import org.wjx.dto.resp.TicketOrderDetailSelfRespDTO;
 import org.wjx.dto.resp.TicketOrderPassengerDetailRespDTO;
-import org.wjx.enums.IdempotentTypeEnum;
 import org.wjx.enums.OrderStatusEnum;
 import org.wjx.page.PageRequest;
 import org.wjx.page.PageResponse;
@@ -97,7 +92,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public PageResponse<TicketOrderDetailRespDTO> pageTicketOrder(TicketOrderPageQueryReqDTO requestParam) {
-        log.info("TicketOrderPageQueryReqDTO:{}",requestParam.toString());
+        log.info("TicketOrderPageQueryReqDTO:{}", requestParam.toString());
         LambdaQueryWrapper<OrderDO> queryWrapper = Wrappers.lambdaQuery(OrderDO.class)
                 .eq(OrderDO::getUserId, requestParam.getUserId())
                 .in(OrderDO::getStatus, buildOrderStatusList(requestParam))
@@ -165,7 +160,7 @@ public class OrderServiceImpl implements OrderService {
 //            发送延时消息，15分钟后不支付就关闭订单
             DelayCloseOrderEvent build = DelayCloseOrderEvent.builder().arrival(requestParam.getArrival()).departure(requestParam.getDeparture())
                     .trainId(requestParam.getTrainId() + "").orderSn(orderSn).trainPurchaseTicketResults(requestParam.getTicketOrderItems()).build();
-            rabbitTemplate.convertAndSend(exchange_delayed, createOrder_routingkey, build,message -> {
+            rabbitTemplate.convertAndSend(exchange_delayed, createOrder_routingkey, build, message -> {
                 //设置消息持久化
                 message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
                 message.getMessageProperties().setDelay(DELAYTIME);
@@ -191,13 +186,13 @@ public class OrderServiceImpl implements OrderService {
         RLock lock = redissonClient.getLock("cancelOrder::" + orderSn);
         boolean b = lock.tryLock();
         try {
-            if (b){
+            if (b) {
                 OrderDO order = new OrderDO();
                 order.setStatus(OrderStatusEnum.CLOSED.getStatus());
                 int update = orderMapper.update(order, new LambdaUpdateWrapper<OrderDO>()
                         .eq(OrderDO::getOrderSn, orderSn)
                         .eq(OrderDO::getStatus, OrderStatusEnum.PENDING_PAYMENT.getStatus()));
-                if (update <=0) throw new ServiceException("订单已经改变状态");
+                if (update <= 0) throw new ServiceException("订单已经改变状态");
                 OrderItemDO orderItemDO = new OrderItemDO();
                 orderItemDO.setOrderSn(orderSn);
                 orderItemDO.setStatus(OrderStatusEnum.CLOSED.getStatus());
@@ -205,15 +200,54 @@ public class OrderServiceImpl implements OrderService {
                 int updatecount = orderItemMapper.update(orderItemDO, new LambdaQueryWrapper<OrderItemDO>()
                         .eq(OrderItemDO::getOrderSn, orderItemDO.getOrderSn())
                         .eq(OrderItemDO::getStatus, OrderStatusEnum.PENDING_PAYMENT.getStatus()));
-                if (updatecount <= 0) throw new ServiceException("订单已经改变状态");
+                if (updatecount <= 0) throw new ServiceException("订单项已经改变状态");
                 return true;
-            }else{
+            } else {
                 throw new ServiceException("重复点击");
             }
-        }finally {
+        } finally {
             lock.unlock();
         }
     }
+
+    /**
+     * 改变订单状态为指定状态
+     *
+     * @param orderSn
+     * @param beforestatus
+     * @param afterstatus
+     * @return
+     */
+    @Override
+    public Boolean changeOrderAndOrderItemStatus(String orderSn, Integer beforestatus, Integer afterstatus) {
+        RLock lock = redissonClient.getLock("changeOrder::" + orderSn);
+        boolean b = lock.tryLock();
+        try {
+            if (b) {
+                OrderDO orderDO = new OrderDO();
+                orderDO.setOrderSn(orderSn);
+                orderDO.setStatus(afterstatus);
+                int update = orderMapper.update(orderDO, new LambdaUpdateWrapper<OrderDO>()
+                        .eq(OrderDO::getOrderSn, orderSn)
+                        .eq(OrderDO::getStatus, beforestatus));
+                if (update<0)  throw new ServiceException("订单已经改变状态");
+                OrderItemDO orderItemDO = new OrderItemDO();
+                orderItemDO.setOrderSn(orderSn);
+                orderItemDO.setStatus(OrderStatusEnum.CLOSED.getStatus());
+                orderItemDO.setStatus(orderDO.getStatus());
+                int updatecount = orderItemMapper.update(orderItemDO, new LambdaQueryWrapper<OrderItemDO>()
+                        .eq(OrderItemDO::getOrderSn, orderItemDO.getOrderSn())
+                        .eq(OrderItemDO::getStatus, beforestatus));
+                if (updatecount <= 0) throw new ServiceException("订单项已经改变状态");
+                return true;
+            } else {
+                throw new ServiceException("重复点击");
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
     private OrderItemDO convertToOrderItemDO(TicketOrderCreateReqDTO requestParam, TicketOrderItemCreateReqDTO each, String orderSn) {
         OrderItemDO orderItemDO = OrderItemDO.builder()
                 .trainId(requestParam.getTrainId())
@@ -253,7 +287,7 @@ public class OrderServiceImpl implements OrderService {
 
     private List<Integer> buildOrderStatusList(TicketOrderPageQueryReqDTO requestParam) {
         List<Integer> result = new ArrayList<>();
-        log.info("requestParam::{}",requestParam.toString());
+        log.info("requestParam::{}", requestParam.toString());
         switch (requestParam.getStatusType()) {
             case 0 -> result = ListUtil.of(
                     OrderStatusEnum.PENDING_PAYMENT.getStatus()
