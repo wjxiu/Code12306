@@ -2,10 +2,8 @@ package org.wjx.template;
 
 import Strategy.AbstractExecuteStrategy;
 import Strategy.IPurchase;
-import cn.hutool.core.collection.CollUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.data.redis.core.HashOperations;
 import org.wjx.core.SafeCache;
 import org.wjx.dao.DO.RouteDTO;
@@ -13,8 +11,6 @@ import org.wjx.dto.resp.TrainPurchaseTicketRespDTO;
 import org.wjx.handler.DTO.SelectSeatDTO;
 import org.wjx.service.TrainStationService;
 import org.wjx.user.core.ApplicationContextHolder;
-
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.wjx.constant.RedisKeyConstant.REMAINTICKETOFSEAT_TRAIN;
