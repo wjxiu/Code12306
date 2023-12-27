@@ -10,6 +10,8 @@ import org.wjx.Res;
 import org.wjx.service.OrderItemService;
 import org.wjx.service.OrderService;
 
+import java.time.LocalDateTime;
+
 /**
  * @author xiu
  * @create 2023-12-07 12:17
@@ -37,6 +39,16 @@ public class OrderController {
     @PostMapping("/api/order-service/remote/ticket/changeStatus")
     Boolean changeOrderAndOrderItemStatus( String  orderSn,Integer beforestatus,Integer afterstatus){
       return   orderService.changeOrderAndOrderItemStatus(orderSn,beforestatus, afterstatus);
+    }
+
+    /**
+     * 获取订单的出行时间
+     * @param orderSn
+     * @return
+     */
+    @PostMapping("/api/order-service/remote/ticket/DepartTime")
+    LocalDateTime getDepartTimeByOrderSn(String orderSn){
+        return   orderService.getDepartTimeByOrderSn(orderSn);
     }
 
 }

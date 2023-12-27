@@ -73,9 +73,8 @@ public class CancelOrderListener {
         } catch (Exception e) {
             if (messageProperties.getHeader("retry-count")!=null){
                 messageProperties.setHeader("retry-count", (int)messageProperties.getHeader("retry-count") +1);
-//             发送重试
-                CancelOrderListener CancelOrderListener = ApplicationContextHolder.getBean(CancelOrderListener.class);
-                CancelOrderListener.listenCreate(delayCloseOrderEvent,channel,message);
+//          todo   发送重试
+
             }else{
                 messageProperties.setHeader("retry-count",1);
             }

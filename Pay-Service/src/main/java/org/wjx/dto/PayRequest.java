@@ -1,6 +1,7 @@
 package org.wjx.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * @author xiu
@@ -30,7 +31,6 @@ public interface PayRequest {
      * 默认雪花算法生成，不同支付方式如需扩展自定义重写即可
      */
     BigDecimal getTotalAmount();
-
     /**
      * 构建查找支付策略实现类标识
      */

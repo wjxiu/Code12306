@@ -43,6 +43,8 @@ import org.wjx.user.core.UserContext;
 import org.wjx.utils.BeanUtil;
 import org.wjx.utils.PageUtil;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -246,6 +248,18 @@ public class OrderServiceImpl implements OrderService {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * 获取订单的出行时间
+     *
+     * @param orderSn
+     * @return
+     */
+    @Override
+    public LocalDateTime getDepartTimeByOrderSn(String orderSn) {
+        OrderDO orderDO = orderMapper.selectOne(new LambdaQueryWrapper<OrderDO>().select(OrderDO::getDepartureTime).eq(OrderDO::getOrderSn, orderSn));
+       return  orderDO.getDepartureTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
     }
 
     private OrderItemDO convertToOrderItemDO(TicketOrderCreateReqDTO requestParam, TicketOrderItemCreateReqDTO each, String orderSn) {

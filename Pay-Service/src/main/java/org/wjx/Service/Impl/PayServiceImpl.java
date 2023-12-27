@@ -1,5 +1,6 @@
 package org.wjx.Service.Impl;
 
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -19,6 +20,8 @@ import org.wjx.enums.OrderStatusEnum;
 import org.wjx.enums.TradeStatusEnum;
 import org.wjx.remote.OrderServiceRemote;
 import org.wjx.utils.BeanUtil;
+
+import java.time.LocalDateTime;
 
 import static org.wjx.config.RabbitConfig.*;
 
@@ -67,10 +70,15 @@ public class PayServiceImpl implements PayService {
         rabbitTemplate.convertAndSend(exchange_delayed,pay_routingkey,payDO, message -> {
             //设置消息持久化
             message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-//            todo 获取火车出发时间，设置延迟时间为出发的前两个小时到现在的时间差，这里修改两小时后
-            message.getMessageProperties().setDelay(2*3600*1000);
+         LocalDateTime time=   orderServiceRemote.getDepartTimeByOrderSn(orderSn);
+            LocalDateTime localDateTime = time.minusHours(2L);
+            LocalDateTime currentDateTime = LocalDateTime.now();
+            int millisecondsDifference =(int) DateUtil.betweenMs(DateUtil.date(currentDateTime), DateUtil.date(localDateTime));
+//             获取火车出发时间，设置延迟时间为出发的前两个小时到现在的时间差，这里修改两小时后
+            message.getMessageProperties().setDelay(millisecondsDifference);
             return message;
         });
+
         PayRespDTO payRespDTO = new PayRespDTO();
         payRespDTO.body="支付成功";
         return payRespDTO;

@@ -7,6 +7,8 @@ import org.wjx.dto.resp.TicketOrderDetailSelfRespDTO;
 import org.wjx.page.PageRequest;
 import org.wjx.page.PageResponse;
 
+import java.time.LocalDateTime;
+
 /**
  * @author xiu
  * @create 2023-12-07 12:18
@@ -42,4 +44,10 @@ public interface OrderService {
     public boolean cancelOrCloseTickOrder(String orderSn);
 
     Boolean changeOrderAndOrderItemStatus(String orderSn,Integer beforestatus,Integer afterstatus);
+    /**
+     * 获取订单的出行时间
+     * @param orderSn
+     * @return
+     */
+    LocalDateTime getDepartTimeByOrderSn(String orderSn);
 }
