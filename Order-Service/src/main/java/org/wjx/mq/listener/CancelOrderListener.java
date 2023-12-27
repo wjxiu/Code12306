@@ -1,6 +1,8 @@
 package org.wjx.mq.listener;
 
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +29,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-import static org.wjx.config.RabbitConfig.creatOrder_delayed_queue;
+import static org.wjx.config.RabbitConfig.*;
 
 /**
  * @author xiu
@@ -69,16 +71,19 @@ public class CancelOrderListener {
                这里报错:没有token,(暂时通过加入白名单跳过错误)
              */
             seatRemoteService.ResetSeatStatus(resetSeatDTOS);
-            channel.basicAck(messageProperties.getDeliveryTag(), true);
+            channel.basicAck(messageProperties.getDeliveryTag(), false);
         } catch (Exception e) {
             if (messageProperties.getHeader("retry-count")!=null){
-                messageProperties.setHeader("retry-count", (int)messageProperties.getHeader("retry-count") +1);
-//          todo   发送重试
-
+//             发送重试
+                    messageProperties.setHeader("retry-count", (int)messageProperties.getHeader("retry-count") +1);
+                    CancelOrderListener CancelOrderListener = ApplicationContextHolder.getBean(CancelOrderListener.class);
+                    CancelOrderListener.listenCreate(delayCloseOrderEvent,channel,message);
+//                    todo 未验证是否立即发送给接收者
+                    channel.basicPublish(exchange_delayed,createOrder_routingkey, null,JSON.toJSONBytes(delayCloseOrderEvent));
             }else{
                 messageProperties.setHeader("retry-count",1);
             }
-            channel.basicAck(messageProperties.getDeliveryTag(), true);
+            channel.basicAck(messageProperties.getDeliveryTag(), false);
             throw new ServiceException("订单取消失败，正在重试");
         }
         log.info("取消订单结束");
