@@ -1,16 +1,13 @@
 package org.wjx.handler;
 
 import cn.hutool.core.collection.CollUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.wjx.Exception.ServiceException;
-import org.wjx.dao.DO.SeatDO;
 import org.wjx.dao.mapper.SeatMapper;
 import org.wjx.dto.req.PurchaseTicketReqDTO;
 import org.wjx.dto.resp.TrainPurchaseTicketRespDTO;
-import org.wjx.enums.SeatStatusEnum;
 import org.wjx.enums.vehicle.VehicleSeatTypeEnum;
 import org.wjx.enums.vehicle.VehicleTypeEnum;
 import org.wjx.handler.DTO.PurchaseTicketPassengerDetailDTO;
@@ -30,11 +27,16 @@ import java.util.*;
  * @create 2023-11-30 10:48
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class TrainSecondClassPurchaseTicketHandler extends AbstractTrainPurchaseTicketTemplate {
     final SeatService seatService;
     final SeatMapper seatMapper;
+
+    public TrainSecondClassPurchaseTicketHandler(SeatMapper seatMapper, SeatService seatService, SeatMapper seatMapper1) {
+        super(seatMapper);
+        this.seatService = seatService;
+        this.seatMapper = seatMapper1;
+    }
 
     @Override
     public String mark() {

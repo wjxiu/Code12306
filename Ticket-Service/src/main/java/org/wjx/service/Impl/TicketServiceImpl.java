@@ -173,7 +173,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
         List<Long> trainIds = ticketListDTOS.stream().map(t -> Long.parseLong(t.getTrainId())).toList();
         String collect = trainIds.stream().map(String::valueOf).sorted().collect(Collectors.joining("-"));
 //       optimize 拆开换成hash 这里获取到座位信息
-        List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, ADVANCE_TICKET_DAY, TimeUnit.DAYS, () -> carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
+        List<CarriageDO> carriageDOS = cache.safeGetForList(TRAINCARRAGE + collect, ADVANCE_TICKET_DAY, TimeUnit.DAYS,
+                () -> carrageMapper.selectList(new LambdaQueryWrapper<CarriageDO>()
                 .in(CarriageDO::getTrainId, trainIds)
                 .select(CarriageDO::getCarriageType, CarriageDO::getCarriageNumber, CarriageDO::getTrainId)));
 //        第二步-----开始
@@ -200,6 +201,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
     }
 
     /**
+     * optimize 也可以获取train_station_relation表的信息
      * 三个for循环保存 列车id-开始车站-结束车站,field:seatType value seatcount
      * 将座位信息保存到缓存中
      */
@@ -383,12 +385,10 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 log.info("缓存key:{}", REMAINTICKETOFSEAT_TRAIN + key);
 //                 修改为减少缓存
                 Long decrement = hashOperations.increment(REMAINTICKETOFSEAT_TRAIN + key, seatType, -1);
-//                Long delete = hashOperations.delete(REMAINTICKETOFSEAT_TRAIN + key, seatType);
                 if (decrement < 1)throw new ServiceException("购票缓存减少失败");
                 else log.info("购票缓存减少成功");
             }
         }
-
         return new TicketPurchaseRespDTO(ticketOrderResult.getData(), ticketOrderDetailResults);
     }
 
