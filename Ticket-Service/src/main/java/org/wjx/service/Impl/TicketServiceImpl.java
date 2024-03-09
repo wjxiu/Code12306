@@ -43,6 +43,11 @@ import org.wjx.service.*;
 import org.wjx.user.core.ApplicationContextHolder;
 import org.wjx.user.core.UserContext;
 
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.ValidationException;
+import javax.validation.Validator;
+import javax.validation.constraints.AssertTrue;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
@@ -226,6 +231,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
 //                optimize 可以抽取出来作为方法
                 for (Integer type : types) {
                     String KEY = REMAINTICKETOFSEAT_TRAIN + StrUtil.join("-", trainId, departureStation, arrivalStation);
+                    //                        optimize  查询车厢表获取车厢可用座位数量
                     Integer seatCount = cache.SafeGetOfHash(KEY, type,
                             () -> seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, departureStation, arrivalStation));
                     log.info("缓存座位key:{},座位type{} 座位数量：{}", KEY, type, seatCount);
@@ -237,11 +243,11 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 for (Integer type : types) {
                     if (seatClassDTO.getType() == type) {
                         String KEY = REMAINTICKETOFSEAT_TRAIN + StrUtil.join("-", trainId, departure, arrival);
+//                        optimize  查询车厢表获取车厢可用座位数量
                         Integer seatCount = cache.SafeGetOfHash(KEY, type,
                                 () -> seatMapper.countByTrainIdAndSeatTypeAndArrivalAndDeparture(trainId, type, departure, arrival));
                         seatClassDTO.setQuantity(seatCount);
                     }
-
                 }
             }
         }
@@ -514,3 +520,4 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, TicketDO> imple
                 .build();
     }
 }
+

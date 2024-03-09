@@ -3,6 +3,7 @@ package org.wjx.handler;
 import cn.hutool.core.collection.CollUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.wjx.Exception.ServiceException;
 import org.wjx.dao.mapper.SeatMapper;

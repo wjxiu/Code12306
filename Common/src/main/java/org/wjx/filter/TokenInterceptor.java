@@ -5,6 +5,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.ModelAndView;
 import org.wjx.Exception.ClientException;
 import org.wjx.utils.JWTUtil;
 import org.wjx.user.core.UserContext;
@@ -38,5 +39,14 @@ public class TokenInterceptor implements HandlerInterceptor {
         if (userInfoDTO==null||!StringUtils.hasLength(userInfoDTO.getUserId()))throw new  ClientException("token无效");
         UserContext.set(userInfoDTO);
         return HandlerInterceptor.super.preHandle(request, response, handler);
+    }
+}
+@Component
+class UserContextINterceptor implements HandlerInterceptor{
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        ////       清除threadlocal
+
+        UserContext.removeUser();
     }
 }
